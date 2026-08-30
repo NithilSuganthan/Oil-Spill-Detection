@@ -1,0 +1,74 @@
+{
+  "model_name": "TinyUNet SAR Oil Spill Segmentation",
+  "model_version": "tiny-unet-v1",
+  "checkpoint_file": "sar_unet.pt",
+  "checkpoint_sha256": "75957de56d59fcad8a56065ff4f3b064bf27e0cf82775866c96faadc32fe700b",
+  "architecture": {
+    "class": "oil_spill_intel.detection.model.TinyUNet",
+    "in_channels": 2,
+    "base_channels": 32,
+    "depth": "2-level encoder + bottleneck + 2-level decoder",
+    "head": "Conv2d(32, 1, kernel=1) \u2014 raw logits",
+    "total_parameters": 467521
+  },
+  "input_contract": {
+    "tensor_shape": "[2, H, W]  (no fixed H, W)",
+    "dtype": "float32",
+    "channel_0": "VV polarization \u2014 linear sigma0, robust_normalize applied",
+    "channel_1": "VH polarization \u2014 linear sigma0, robust_normalize applied",
+    "sar_scale_before_normalization": "linear_sigma0_raw_from_geotiff (NOT dB)",
+    "preprocessing_function": "oil_spill_intel.detection.data.robust_normalize()",
+    "preprocessing_detail": "Per-channel: lo, hi = np.nanpercentile(channel, [1, 99]); output = np.clip((channel - lo) / max(hi - lo, 1e-6), 0, 1). Computed per-inference tile \u2014 NOT a fixed global mean/std."
+  },
+  "output_contract": {
+    "tensor_shape": "[1, H, W]",
+    "dtype": "float32",
+    "semantics": "raw logits \u2014 apply torch.sigmoid() to get oil probability in [0, 1]",
+    "recommended_threshold": 0.5,
+    "threshold_note": "Default 0.5 is a starting point. Calibrate on held-out scenes for your target geography and vessel type prior."
+  },
+  "training": {
+    "dataset": "Zenodo Sentinel-1 SAR Oil Spill Dataset (record 8346860)",
+    "dataset_url": "https://zenodo.org/records/8346860",
+    "dataset_license": "CC BY 4.0",
+    "epochs": 12,
+    "batch_size": 8,
+    "optimizer": "AdamW (lr=1e-3, weight_decay=1e-4)",
+    "scheduler": "CosineAnnealingLR (T_max=12, eta_min=1e-5)",
+    "loss": "0.5 * BCE + 0.5 * (1 - Dice)"
+  },
+  "evaluation": {
+    "dice_f1": 0.07945,
+    "iou": 0.041368,
+    "precision": 0.291159,
+    "recall": 0.046001,
+    "pixel_accuracy": 0.967316,
+    "false_positive_rate": 0.003542,
+    "tp_pixels": 2773,
+    "fp_pixels": 6751,
+    "fn_pixels": 57508,
+    "tn_pixels": 1899048,
+    "threshold": 0.5,
+    "note": "Pixel-level metrics. Pixel accuracy alone is misleading (oil pixels are rare). Dice/F1 and IoU are the primary indicators. Break down by wind/wave regime and scene size for production evaluation.",
+    "mean_val_loss": 0.556376,
+    "n_test_scenes": 30,
+    "n_train_scenes": 240,
+    "n_val_scenes": 30,
+    "best_epoch": 10,
+    "best_val_dice_f1": 0.761891,
+    "checkpoint_sha256": "75957de56d59fcad8a56065ff4f3b064bf27e0cf82775866c96faadc32fe700b"
+  },
+  "limitations": [
+    "Pixel accuracy alone is misleading due to class imbalance (oil pixels are rare).",
+    "SAR look-alikes (low wind, algae, internal waves, rain cells) are not eliminated by the model.",
+    "Performance degrades in very low wind (<3 m/s) and very high wind (>12 m/s) conditions.",
+    "Model has not been fine-tuned on Indian Ocean scenes; regional fine-tuning is recommended.",
+    "Slick age cannot be estimated from SAR pixel values alone.",
+    "SR (super-resolution) output must NOT be used as inference input; use native-resolution SAR."
+  ],
+  "guardrails": [
+    "Always output 'potential_slick' language, never 'confirmed_oil_spill'.",
+    "Always expose look_alike_risk and human_review_required fields.",
+    "Validate detection.confidence against held-out scenes before any operational use."
+  ]
+}

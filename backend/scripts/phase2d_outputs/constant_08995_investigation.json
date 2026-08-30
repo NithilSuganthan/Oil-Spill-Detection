@@ -1,0 +1,24 @@
+{
+  "VV": {
+    "absolute_constant_xml": 0.8995,
+    "lut_value_range": [
+      530.178,
+      628.0775
+    ],
+    "lut_mean": 570.6445423809524,
+    "constant_provenance": "The absolute calibration constant 0.8995 is specified in the product's calibration XML under <absoluteCalibrationConstant>. Per ESA SNAP CalibrationOp and S1-TAS-MEPS-0022, this constant is ALREADY INCORPORATED in the calibration LUT (sigmaNought) values provided in the product. It represents the absolute radiometric accuracy of the sensor calibration.",
+    "application_in_code": "Our code does NOT apply the constant separately. We compute sigma0 = DN^2 / A_sigma^2 where A_sigma is the interpolated LUT value that already includes the constant. This is correct and avoids double-application.",
+    "risk_of_double_application": "If someone were to multiply the LUT values by the constant before interpolation, the resulting sigma0 values would be off by a factor of const^2 = 0.8091. We verified this is NOT happening in our code."
+  },
+  "VH": {
+    "absolute_constant_xml": 0.8995,
+    "lut_value_range": [
+      530.178,
+      628.0775
+    ],
+    "lut_mean": 570.6445423809524,
+    "constant_provenance": "The absolute calibration constant 0.8995 is specified in the product's calibration XML under <absoluteCalibrationConstant>. Per ESA SNAP CalibrationOp and S1-TAS-MEPS-0022, this constant is ALREADY INCORPORATED in the calibration LUT (sigmaNought) values provided in the product. It represents the absolute radiometric accuracy of the sensor calibration.",
+    "application_in_code": "Our code does NOT apply the constant separately. We compute sigma0 = DN^2 / A_sigma^2 where A_sigma is the interpolated LUT value that already includes the constant. This is correct and avoids double-application.",
+    "risk_of_double_application": "If someone were to multiply the LUT values by the constant before interpolation, the resulting sigma0 values would be off by a factor of const^2 = 0.8091. We verified this is NOT happening in our code."
+  }
+}

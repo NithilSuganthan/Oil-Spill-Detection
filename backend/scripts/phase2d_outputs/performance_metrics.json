@@ -1,0 +1,32 @@
+{
+  "total_processing_time_s": 1513.0,
+  "total_processing_time_min": 25.2,
+  "input_file_size_bytes": 742265223,
+  "input_file_size_MB": 742.3,
+  "output_file_sizes": {
+    "vv_calibrated": 1181699655,
+    "vv_georeferenced": 1193121841,
+    "vv_db": 1088051172,
+    "vh_calibrated": 1154834379,
+    "vh_georeferenced": 1191281748,
+    "vh_db": 1114377826
+  },
+  "total_output_bytes": 6923366621,
+  "total_output_MB": 6923.4,
+  "throughput_MB_per_min": 274.56,
+  "source_dimensions": {
+    "width": 25150,
+    "height": 15175
+  },
+  "output_dimensions": {
+    "width": 27718,
+    "height": 20147
+  },
+  "peak_memory_estimate_MB": "Blockwise processing (256 rows x 25150 cols x 8 bytes) = ~50 MB per block for calibration; georeferencing uses similar block sizes. Peak RSS is estimated at 200-400 MB including Python overhead.",
+  "memory_measurement_note": "Windows PowerShell does not expose precise per-process RSS without external tools (e.g., psutil). The estimate above is based on the block processing strategy.",
+  "software": {
+    "python": "3.12.10",
+    "numpy": "2.5.2",
+    "component": "app.satellite.grd_preprocess.GrdPreprocessor"
+  }
+}

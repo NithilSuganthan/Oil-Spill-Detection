@@ -1,0 +1,27 @@
+{
+  "description": "Golden input/output pair for TinyUNet integration verification.",
+  "channel_order": {
+    "sar_input[0]": "VV \u2014 linear sigma0, robust_normalize applied",
+    "sar_input[1]": "VH \u2014 linear sigma0, robust_normalize applied"
+  },
+  "preprocessing": "robust_normalize(): per-channel percentile [p1, p99] clip and rescale to [0,1]. Computed per-scene at inference time. Source: oil_spill_intel.detection.data.robust_normalize()",
+  "model_output": "raw logits [1, H, W]; sigmoid applied to get expected_prob_mask",
+  "threshold": 0.5,
+  "golden_scene_metrics": {
+    "dice_f1": 0.001029,
+    "iou": 0.000515,
+    "precision": 1.0,
+    "recall": 0.000515,
+    "pixel_accuracy": 0.170227,
+    "false_positive_rate": 0.0,
+    "tp_pixels": 28,
+    "fp_pixels": 0,
+    "fn_pixels": 54380,
+    "tn_pixels": 11128,
+    "threshold": 0.5,
+    "note": "Pixel-level metrics. Pixel accuracy alone is misleading (oil pixels are rare). Dice/F1 and IoU are the primary indicators. Break down by wind/wave regime and scene size for production evaluation."
+  },
+  "sha256_golden_output_npz": "62066c82096333ff44e1e06a22fccb62f78759085a66784276e804254ee02766",
+  "checkpoint_sha256": "75957de56d59fcad8a56065ff4f3b064bf27e0cf82775866c96faadc32fe700b",
+  "integration_check": "Load sar_input (already normalised) directly into TinyUNet. Assert torch.allclose(sigmoid(model(sar_input)), expected_prob_mask, atol=1e-5). If this fails, preprocessing or model loading is broken."
+}

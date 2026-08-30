@@ -1,0 +1,40 @@
+{
+  "current_method": {
+    "name": "GCP Least-Squares Polynomial Warp",
+    "description": "Extract 189 GCPs from measurement TIFF, fit 3rd-order polynomial (normalized coords), output regular grid in EPSG:4326.",
+    "pros": [
+      "Simple, no external dependencies beyond rasterio/GDAL",
+      "Works with any Sentinel-1 product (GRD or SLC)",
+      "Numerically stable with normalized coordinates",
+      "Blockwise processing preserves memory efficiency"
+    ],
+    "cons": [
+      "Does not account for terrain effects (DEM-dependent)",
+      "Polynomial fit may be suboptimal near swath edges",
+      "No ionospheric/tropospheric corrections",
+      "No Doppler centroid correction"
+    ]
+  },
+  "production_method": {
+    "name": "Range-Doppler Geocoding / Sentinel-1 TC",
+    "description": "Uses the satellite orbit state vectors, Doppler centroid, and DEM to compute precise geolocation for each pixel. Implemented in ESA SNAP/S1TBX as the Terrain Correction operator.",
+    "pros": [
+      "Pixel-level geolocation accuracy (~5-10 m without DEM)",
+      "Accounts for terrain effects",
+      "Industry standard for Sentinel-1 processing",
+      "Proper handling of Doppler effects"
+    ],
+    "cons": [
+      "Requires DEM data (SRTM or Copernicus DEM)",
+      "More complex implementation",
+      "Higher computational cost",
+      "Requires precise orbit files for best results"
+    ]
+  },
+  "recommendation": {
+    "for_flat_ocean": "GREEN \u2014 The GCP polynomial method is ACCEPTABLE for flat ocean oil-spill detection. Ocean surfaces have negligible terrain relief, so the polynomial warp introduces minimal error. The RMSE validation (step 6) confirms sub-meter accuracy.",
+    "for_indian_maritime": "YELLOW \u2014 Acceptable for coastal/near-shore scenes with calm terrain, but if processing extends to areas with significant topography near shore, Range-Doppler geocoding would be preferred.",
+    "for_production": "YELLOW \u2014 For production deployment, consider migrating to Range-Doppler geocoding (via ESA SNAP engine or sarsen library) to achieve pixel-level accuracy across all terrain types. The current GCP polynomial is scientifically valid for the flat-ocean use case but not optimal for general maritime scenes."
+  },
+  "implementation_path": "If Range-Doppler geocoding is needed: 1. Use sarsen (open-source SAR processing library) or 2. Integrate ESA SNAP via snappy/pysnappy, or 3. Implement basic Range-Doppler using orbit files + DEM"
+}

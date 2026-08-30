@@ -1,0 +1,21 @@
+{
+  "dice_f1": 0.07945,
+  "iou": 0.041368,
+  "precision": 0.291159,
+  "recall": 0.046001,
+  "pixel_accuracy": 0.967316,
+  "false_positive_rate": 0.003542,
+  "tp_pixels": 2773,
+  "fp_pixels": 6751,
+  "fn_pixels": 57508,
+  "tn_pixels": 1899048,
+  "threshold": 0.5,
+  "note": "Pixel-level metrics. Pixel accuracy alone is misleading (oil pixels are rare). Dice/F1 and IoU are the primary indicators. Break down by wind/wave regime and scene size for production evaluation.",
+  "mean_val_loss": 0.556376,
+  "n_test_scenes": 30,
+  "n_train_scenes": 240,
+  "n_val_scenes": 30,
+  "best_epoch": 10,
+  "best_val_dice_f1": 0.761891,
+  "checkpoint_sha256": "75957de56d59fcad8a56065ff4f3b064bf27e0cf82775866c96faadc32fe700b"
+}

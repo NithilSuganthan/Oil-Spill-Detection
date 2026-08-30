@@ -1,0 +1,144 @@
+{
+  "_description": "Integration contract for the TinyUNet SAR oil-spill segmentation model. This document is the authoritative specification for all backend integration partners. Do not integrate a heuristic detector in place of this contract.",
+  "_status": "AWAITING_CHECKPOINT — checkpoint will be placed at artifacts/sar_unet.pt after Zenodo training run completes.",
+
+  "model_id": "tiny-unet-v1",
+  "checkpoint_path": "artifacts/sar_unet.pt",
+  "checkpoint_format": "PyTorch state_dict saved via torch.save({model_state, in_channels, base_channels, model_version, epoch, val_dice_f1, val_iou, threshold, dataset, sar_channels, preprocessing})",
+  "checkpoint_sha256": "TBD — populated by train_and_evaluate.py",
+
+  "architecture": {
+    "class": "oil_spill_intel.detection.model.TinyUNet",
+    "constructor_args": {
+      "in_channels": 2,
+      "base_channels": 32
+    },
+    "loading_snippet": [
+      "import torch",
+      "from oil_spill_intel.detection.model import TinyUNet",
+      "checkpoint = torch.load('artifacts/sar_unet.pt', map_location='cpu', weights_only=True)",
+      "model = TinyUNet(in_channels=checkpoint['in_channels'], base_channels=checkpoint.get('base_channels', 32))",
+      "model.load_state_dict(checkpoint['model_state'])",
+      "model.eval()"
+    ]
+  },
+
+  "input_contract": {
+    "tensor_shape": "[2, H, W] — no fixed H or W; TinyUNet uses fully-convolutional architecture",
+    "dtype": "torch.float32",
+    "batch_dimension": "Add batch dim before forward pass: input[None, ...] gives [1, 2, H, W]",
+    "channel_0": "VV polarization — linear sigma0, raw from GeoTIFF band 1",
+    "channel_1": "VH polarization — linear sigma0, raw from GeoTIFF band 1",
+    "sar_scale": "linear_sigma0_raw — do NOT convert to dB before preprocessing",
+    "preprocessing_required": true,
+    "preprocessing_function": "oil_spill_intel.detection.data.robust_normalize(sar: np.ndarray) -> np.ndarray",
+    "preprocessing_detail": {
+      "type": "per_channel_percentile_rescale",
+      "percentiles": [1, 99],
+      "formula": "clip((channel - p1) / max(p99 - p1, 1e-6), 0, 1)",
+      "scope": "per_scene — percentiles computed from each tile independently, NOT a global mean/std",
+      "output_range": "[0.0, 1.0]",
+      "output_dtype": "float32"
+    },
+    "preprocessing_snippet": [
+      "import numpy as np",
+      "from oil_spill_intel.detection.data import robust_normalize",
+      "import torch",
+      "# sar: np.ndarray [2, H, W] — raw linear sigma0 from GeoTIFF",
+      "norm = robust_normalize(sar)                      # float32 [2, H, W]",
+      "inp = torch.from_numpy(norm)[None, ...]           # [1, 2, H, W]"
+    ]
+  },
+
+  "output_contract": {
+    "tensor_shape": "[1, H, W] — same spatial dimensions as input",
+    "dtype": "torch.float32",
+    "semantics": "raw_logits — NOT probabilities",
+    "to_probability": "prob_mask = torch.sigmoid(logits).squeeze()  # [H, W] in [0, 1]",
+    "to_binary_mask": "binary_mask = (prob_mask >= threshold).cpu().numpy().astype('uint8')",
+    "recommended_threshold": 0.5,
+    "threshold_note": "0.5 is the training default. Calibrate against held-out scenes for your geography.",
+    "output_snippet": [
+      "with torch.no_grad():",
+      "    logits = model(inp)                           # [1, 1, H, W]",
+      "prob_mask = torch.sigmoid(logits).squeeze().numpy()  # float32 [H, W]",
+      "binary_mask = (prob_mask >= 0.5).astype('uint8') # uint8  [H, W]"
+    ]
+  },
+
+  "golden_fixture_contract": {
+    "input_file": "artifacts/sar_unet.golden_output.npz",
+    "arrays": {
+      "sar_input": "float32 [2, H, W] — robust_normalize already applied; pass directly to model",
+      "raw_sar": "float32 [2, H, W] — original linear sigma0 before normalization (for reference)",
+      "expected_prob_mask": "float32 [H, W] — sigmoid(model(sar_input)).squeeze() from the trained model",
+      "expected_binary_mask": "uint8  [H, W] — (expected_prob_mask >= threshold).astype(uint8)",
+      "gt_mask": "uint8  [H, W] — ground-truth oil mask from Zenodo dataset",
+      "threshold": "float32 scalar — threshold used to produce expected_binary_mask"
+    },
+    "integration_test": [
+      "import numpy as np, torch",
+      "from oil_spill_intel.detection.model import TinyUNet",
+      "d = np.load('artifacts/sar_unet.golden_output.npz')",
+      "checkpoint = torch.load('artifacts/sar_unet.pt', map_location='cpu', weights_only=True)",
+      "model = TinyUNet(in_channels=checkpoint['in_channels'])",
+      "model.load_state_dict(checkpoint['model_state'])",
+      "model.eval()",
+      "inp = torch.from_numpy(d['sar_input'])[None, ...]",
+      "with torch.no_grad():",
+      "    prob = torch.sigmoid(model(inp)).squeeze().numpy()",
+      "assert np.allclose(prob, d['expected_prob_mask'], atol=1e-5), 'Integration broken: output mismatch'"
+    ],
+    "sha256_golden_output_npz": "TBD — populated by train_and_evaluate.py"
+  },
+
+  "training_dataset": {
+    "name": "Zenodo Sentinel-1 SAR Oil Spill Detection Dataset",
+    "record_id": "8346860",
+    "url": "https://zenodo.org/records/8346860",
+    "license": "CC BY 4.0",
+    "approximate_size_compressed_gb": 1.5,
+    "content": "Paired VV+VH GeoTIFFs and binary oil/look-alike segmentation masks",
+    "tile_size": "512x512 pixels",
+    "download_script": "scripts/prepare_zenodo_segmentation_dataset.py",
+    "training_command": [
+      "python scripts/prepare_zenodo_segmentation_dataset.py --out-dir data/zenodo_s1_segmentation",
+      "python -m oil_spill_intel.detection.train_and_evaluate --train-dir data/zenodo_s1_segmentation/npz --split-dir data/zenodo_s1_segmentation/splits --golden-dir data/zenodo_s1_segmentation/golden --out artifacts/sar_unet.pt --epochs 25"
+    ]
+  },
+
+  "evaluation_metrics": {
+    "primary": ["dice_f1", "iou"],
+    "secondary": ["precision", "recall", "pixel_accuracy", "false_positive_rate"],
+    "note": "Pixel accuracy alone is misleading due to extreme class imbalance. Use dice_f1 and iou as primary indicators.",
+    "stratification_recommended": ["wind_speed_regime", "wave_height", "incidence_angle", "slick_area_km2", "coast_distance_km"],
+    "results_file": "artifacts/sar_unet.metrics.json",
+    "actual_results": "TBD — populated after training run"
+  },
+
+  "companion_models": {
+    "csiro_chip_verifier": {
+      "checkpoint": "artifacts/csiro_s1_verifier.joblib",
+      "purpose": "Second-stage verifier: classifies extracted candidate regions as oil or look-alike. Complements pixel-level segmentation.",
+      "input": "128x128 grayscale uint8 chip",
+      "output": "probability float in [0, 1]",
+      "metrics": {
+        "accuracy": 0.8881,
+        "precision": 0.8320,
+        "recall": 0.8320,
+        "f1": 0.8320,
+        "roc_auc": 0.9575,
+        "test_samples": 1108,
+        "dataset": "CSIRO Sentinel-1 Oil/No-Oil Chip Dataset (CC BY-SA 4.0)"
+      }
+    }
+  },
+
+  "guardrails": {
+    "language": "Always use 'potential slick' — never 'confirmed oil spill'.",
+    "human_review_required": "DetectionResult.human_review_required is always True in this system.",
+    "confidence_note": "Confidence is a calibrated signal, not legal evidence.",
+    "look_alike_risk": "Always expose look_alike_risk from quality.assess_observation_quality().",
+    "no_heuristic_fallback": "Do NOT substitute the heuristic brightness detector for this model in production."
+  }
+}

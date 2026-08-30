@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-base-950 text-ink antialiased;
+  }
+  ::selection {
+    @apply bg-signal-cyan/30;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-md border border-line bg-base-900/80 backdrop-blur-sm;
+  }
+  .panel-header {
+    @apply flex h-10 items-center justify-between border-b border-line px-3;
+  }
+  .panel-title {
+    @apply font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-ink-dim;
+  }
+  .stat-value {
+    @apply font-mono text-2xl font-semibold tracking-tight text-ink;
+  }
+  .stat-label {
+    @apply mt-0.5 text-[11px] uppercase tracking-wider text-ink-faint;
+  }
+  .focus-ring {
+    @apply outline-none focus-visible:ring-1 focus-visible:ring-signal-cyan/70 focus-visible:ring-offset-1 focus-visible:ring-offset-base-950;
+  }
+}
+
+/* Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1b2a44 transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #1b2a44;
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* MapLibre overrides to match the command-center aesthetic */
+.maplibregl-ctrl-attrib {
+  background: rgba(7, 12, 22, 0.75) !important;
+  color: #5c718f !important;
+  font-size: 10px !important;
+}
+.maplibregl-ctrl-attrib a {
+  color: #93a4bd !important;
+}
+.maplibregl-ctrl-bottom-right,
+.maplibregl-ctrl-bottom-left {
+  z-index: 1 !important;
+}
+.maplibregl-popup-content {
+  background: #0a1120 !important;
+  border: 1px solid #27405f !important;
+  border-radius: 4px !important;
+  padding: 10px 12px !important;
+  box-shadow: 0 12px 32px rgba(2, 6, 16, 0.6) !important;
+  font-family: var(--font-inter), system-ui, sans-serif !important;
+}
+.maplibregl-popup-tip {
+  border-top-color: #0a1120 !important;
+  border-bottom-color: #0a1120 !important;
+}
+.maplibregl-canvas:focus {
+  outline: none;
+}

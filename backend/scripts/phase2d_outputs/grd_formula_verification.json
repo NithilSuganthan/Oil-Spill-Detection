@@ -1,0 +1,29 @@
+{
+  "formula": "sigma0 = DN^2 / A_sigma^2",
+  "source": "ESA SNAP CalibrationOp, S1-TAS-MEPS-0022, eopf S1 L12 ATBD eq 6.3-6.4",
+  "absolute_calibration_constant": 0.8995,
+  "constant_provenance": "Embedded in product calibration XML <absoluteCalibrationConstant>",
+  "lut_quantity": "sigmaNought (calibrated sigma-naught)",
+  "lut_anchors": {
+    "n_lines": 25,
+    "n_pixels": 630,
+    "line_range": [
+      0,
+      16124
+    ],
+    "pixel_range": [
+      0,
+      25149
+    ]
+  },
+  "interpolation": "Separable bilinear (range then azimuth)",
+  "units": "dimensionless (linear power backscatter coefficient)",
+  "grd_specific": "GRD products are multi-looked in azimuth; the calibration LUT accounts for the effective number of looks and the antenna pattern. No additional processing-specific correction is needed beyond the LUT.",
+  "constant_role": "The absolute calibration constant (0.8995) is ALREADY incorporated in the sigmaNought LUT values provided in the product XML. Our code does NOT apply it separately. No double-application.",
+  "verification": {
+    "pixels_tested": 20,
+    "mismatches": 0,
+    "max_abs_error": 9.084000635040113e-10,
+    "status": "VERIFIED"
+  }
+}

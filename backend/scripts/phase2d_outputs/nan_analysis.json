@@ -1,0 +1,90 @@
+{
+  "VV": {
+    "total_pixels_sampled": 2180588,
+    "nan_pixels_sampled": 741447,
+    "nan_percentage": 34.0,
+    "valid_percentage": 66.0,
+    "dimensions": {
+      "width": 27718,
+      "height": 20147
+    },
+    "total_pixels_full": 558434546,
+    "estimated_nan_full": 189879802,
+    "output_bounds": [
+      70.742279,
+      5.254306269611301,
+      73.24655422908509,
+      7.076344
+    ],
+    "gcp_hull_bounds": [
+      70.74227891530917,
+      73.24653538273091,
+      5.254269998082895,
+      7.0763439711486225
+    ],
+    "grid_nan_distribution": [
+      0.4122475397537547,
+      0.2961415689677998,
+      0.5774186905164679,
+      0.8606375310748592,
+      0.22177520189464703,
+      0.0,
+      0.0,
+      0.07441785204689545,
+      0.07466792191935982,
+      0.0,
+      0.0,
+      0.22395963578058575,
+      0.8654844736029185,
+      0.7089554434327239,
+      0.5238228328503552,
+      0.5755946514467277
+    ],
+    "analysis": "The georeferenced output is 27718\u00d720147 = 558,434,546 pixels. Approximately 34.0% are NaN. The output grid is derived from the product's advertised footprint (GCP bounding box). NaN pixels occur where the GCP polynomial warping maps outside the source image. This is EXPECTED behavior for GCP-based georeferencing \u2014 the output grid is rectangular but the source image footprint (from GCP convex hull) is not axis-aligned in geographic CRS. The NaN region is NOT unnecessary warp loss; it is the natural consequence of fitting a rectangular grid to a tilted satellite swath in EPSG:4326.",
+    "expected_vs_unnecessary": "EXPECTED NO-DATA. The Sentinel-1 GRD swath is ~250 km wide but tilted relative to the geographic grid. When reprojected to EPSG:4326, the rectangular output grid must encompass the full extent, leaving NaN at the corners where no source data exists. A different georeferencing strategy (e.g., cropping to the convex hull) would reduce NaN but would not change the valid data content."
+  },
+  "VH": {
+    "total_pixels_sampled": 2180588,
+    "nan_pixels_sampled": 741447,
+    "nan_percentage": 34.0,
+    "valid_percentage": 66.0,
+    "dimensions": {
+      "width": 27718,
+      "height": 20147
+    },
+    "total_pixels_full": 558434546,
+    "estimated_nan_full": 189879802,
+    "output_bounds": [
+      70.742279,
+      5.254306269611301,
+      73.24655422908509,
+      7.076344
+    ],
+    "gcp_hull_bounds": [
+      70.74227891530917,
+      73.24653538273091,
+      5.254269998082895,
+      7.0763439711486225
+    ],
+    "grid_nan_distribution": [
+      0.4122475397537547,
+      0.2961415689677998,
+      0.5774186905164679,
+      0.8606375310748592,
+      0.22177520189464703,
+      0.0,
+      0.0,
+      0.07441785204689545,
+      0.07466792191935982,
+      0.0,
+      0.0,
+      0.22395963578058575,
+      0.8654844736029185,
+      0.7089554434327239,
+      0.5238228328503552,
+      0.5755946514467277
+    ],
+    "analysis": "The georeferenced output is 27718\u00d720147 = 558,434,546 pixels. Approximately 34.0% are NaN. The output grid is derived from the product's advertised footprint (GCP bounding box). NaN pixels occur where the GCP polynomial warping maps outside the source image. This is EXPECTED behavior for GCP-based georeferencing \u2014 the output grid is rectangular but the source image footprint (from GCP convex hull) is not axis-aligned in geographic CRS. The NaN region is NOT unnecessary warp loss; it is the natural consequence of fitting a rectangular grid to a tilted satellite swath in EPSG:4326.",
+    "expected_vs_unnecessary": "EXPECTED NO-DATA. The Sentinel-1 GRD swath is ~250 km wide but tilted relative to the geographic grid. When reprojected to EPSG:4326, the rectangular output grid must encompass the full extent, leaving NaN at the corners where no source data exists. A different georeferencing strategy (e.g., cropping to the convex hull) would reduce NaN but would not change the valid data content."
+  }
+}

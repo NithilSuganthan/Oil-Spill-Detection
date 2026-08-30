@@ -1,0 +1,56 @@
+{
+  "grid_alignment": {
+    "same_crs": true,
+    "same_dimensions": true,
+    "same_transform": true,
+    "same_bounds": true,
+    "same_nodata": false,
+    "vv_width": 27718,
+    "vv_height": 20147,
+    "vh_width": 27718,
+    "vh_height": 20147,
+    "vv_crs": "EPSG:4326",
+    "vh_crs": "EPSG:4326",
+    "vv_bounds": [
+      70.742279,
+      5.254306269611301,
+      73.24655422908509,
+      7.076344
+    ],
+    "vh_bounds": [
+      70.742279,
+      5.254306269611301,
+      73.24655422908509,
+      7.076344
+    ],
+    "vv_transform": [
+      9.034833787016023e-05,
+      0.0,
+      70.742279,
+      0.0,
+      -9.043717329571147e-05,
+      7.076344,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "vh_transform": [
+      9.034833787016023e-05,
+      0.0,
+      70.742279,
+      0.0,
+      -9.043717329571147e-05,
+      7.076344,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "pixel_level_stats": {
+    "mean_difference": 0.01239898,
+    "max_difference": 1.73247254,
+    "correlation": 0.549128
+  },
+  "aligned": true,
+  "status": "ALIGNED"
+}

@@ -1,0 +1,32 @@
+# Node / Next.js
+node_modules
+.next
+out
+build
+*.log
+.DS_Store
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.tmp-tests/
+venv/
+.venv/
+env/
+
+# Environment / Secrets
+.env
+.env*.local
+
+# Heavy Satellite / Data Files
+data/scenes/processed/
+data/scenes/products/
+*.zip
+*.tif
+*.tiff
+
+

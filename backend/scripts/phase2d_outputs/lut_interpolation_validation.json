@@ -1,0 +1,122 @@
+{
+  "tests": [
+    {
+      "test": "exact_anchor",
+      "line": 0,
+      "pixel": 0,
+      "expected": 10.0,
+      "got": 10.0,
+      "pass": true
+    },
+    {
+      "test": "exact_anchor",
+      "line": 100,
+      "pixel": 50,
+      "expected": 16.0,
+      "got": 16.0,
+      "pass": true
+    },
+    {
+      "test": "exact_anchor",
+      "line": 300,
+      "pixel": 200,
+      "expected": 29.0,
+      "got": 29.0,
+      "pass": true
+    },
+    {
+      "test": "exact_anchor",
+      "line": 200,
+      "pixel": 100,
+      "expected": 22.0,
+      "got": 22.0,
+      "pass": true
+    },
+    {
+      "test": "midpoint",
+      "line": 50,
+      "pixel": 25,
+      "expected": 13.0,
+      "got": 13.0,
+      "pass": true
+    },
+    {
+      "test": "midpoint",
+      "line": 150,
+      "pixel": 75,
+      "expected": 19.0,
+      "got": 19.0,
+      "pass": true
+    },
+    {
+      "test": "midpoint",
+      "line": 250,
+      "pixel": 125,
+      "expected": 25.0,
+      "got": 25.0,
+      "pass": true
+    },
+    {
+      "test": "between_azimuth",
+      "line": 37,
+      "pixel": 120,
+      "expected": 14.25,
+      "got": 14.25,
+      "pass": true
+    },
+    {
+      "test": "between_azimuth",
+      "line": 173,
+      "pixel": 180,
+      "expected": 22.25,
+      "got": 22.25,
+      "pass": true
+    },
+    {
+      "test": "full_2d_block",
+      "max_error": 1.7763568394002505e-15,
+      "pass": true
+    },
+    {
+      "test": "nonseparable_2d",
+      "line": 73,
+      "pixel": 87,
+      "expected": 16.025100000000002,
+      "got": 16.0251,
+      "pass": true
+    },
+    {
+      "test": "edge",
+      "line": 0,
+      "pixel": 0,
+      "expected": 10.0,
+      "got": 10.0,
+      "pass": true
+    },
+    {
+      "test": "edge",
+      "line": 0,
+      "pixel": 200,
+      "expected": 14.0,
+      "got": 14.0,
+      "pass": true
+    },
+    {
+      "test": "edge",
+      "line": 300,
+      "pixel": 0,
+      "expected": 25.0,
+      "got": 25.0,
+      "pass": true
+    },
+    {
+      "test": "edge",
+      "line": 300,
+      "pixel": 200,
+      "expected": 29.0,
+      "got": 29.0,
+      "pass": true
+    }
+  ],
+  "all_pass": true
+}

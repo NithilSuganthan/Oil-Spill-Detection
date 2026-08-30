@@ -1,0 +1,12 @@
+{
+  "polarization": "VH",
+  "n_pixels": 49,
+  "lut_abs_error_mean": 3.712223272542564e-14,
+  "lut_abs_error_max": 1.1368683772161603e-13,
+  "sigma0_abs_error_mean": 2.2901005071887693e-19,
+  "sigma0_abs_error_max": 2.6020852139652106e-18,
+  "sigma0_rel_error_mean": 1.3014569404090078e-16,
+  "sigma0_rel_error_max": 5.527597439051482e-16,
+  "reference": "Independent scipy RegularGridInterpolator over same LUT anchors",
+  "reference_doc": "ESA SNAP CalibrationOp / S1-TAS-MEPS-0022 eq: sigma0 = DN^2 / A_sigma^2"
+}

@@ -1,0 +1,28 @@
+{
+  "VV": {
+    "polarization": "VV",
+    "pixels_tested": 50,
+    "mismatches": 0,
+    "max_abs_error_dB": 1e-06,
+    "inf_in_output": 0,
+    "nan_in_output_sampled": 741447,
+    "valid_in_output_sampled": 1439141,
+    "zero_negative_handling": "PASS - Linear values <= 0 are mapped to NaN in dB output. No infinities contaminate the output.",
+    "formula": "sigma0_dB = 10 * log10(sigma0_linear)",
+    "note": "dB conversion is verified on the georeferenced grid. The linear and dB outputs share the same CRS, transform, and dimensions. Float32 precision introduces ~0.003 dB quantization.",
+    "status": "VERIFIED"
+  },
+  "VH": {
+    "polarization": "VH",
+    "pixels_tested": 50,
+    "mismatches": 0,
+    "max_abs_error_dB": 2e-06,
+    "inf_in_output": 0,
+    "nan_in_output_sampled": 741447,
+    "valid_in_output_sampled": 1439141,
+    "zero_negative_handling": "PASS - Linear values <= 0 are mapped to NaN in dB output. No infinities contaminate the output.",
+    "formula": "sigma0_dB = 10 * log10(sigma0_linear)",
+    "note": "dB conversion is verified on the georeferenced grid. The linear and dB outputs share the same CRS, transform, and dimensions. Float32 precision introduces ~0.003 dB quantization.",
+    "status": "VERIFIED"
+  }
+}

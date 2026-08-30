@@ -1,0 +1,60 @@
+{
+  "VV": {
+    "polarization": "VV",
+    "n_valid_sampled": 51734567,
+    "min": 8.69372e-05,
+    "max": 231.200958,
+    "mean": 0.01935074,
+    "median": 0.01408129,
+    "std": 0.05952305,
+    "percentiles": {
+      "p1": 0.0018785516,
+      "p5": 0.0033877564,
+      "p25": 0.0079631982,
+      "p50": 0.01408129,
+      "p75": 0.0240416229,
+      "p95": 0.05100533,
+      "p99": 0.08764691
+    },
+    "physical_range_check": "PASS",
+    "ocean_plausibility": "C-band ocean sigma0 for VV typically ranges 0.001-0.1 linear (i.e. -30 to -10 dB). For VH, typically 0.0001-0.01 linear (i.e. -40 to -20 dB). Mean VV ~0.014 and VH ~0.0016 are consistent with open-ocean C-band backscatter.",
+    "dB_mean": -17.133,
+    "dB_median": -18.514,
+    "extreme_outliers": {
+      "p999_threshold": 0.137108,
+      "n_extreme": 355,
+      "extreme_max": 3.983283,
+      "extreme_mean": 0.270562,
+      "interpretation": "Extreme values (sigma0 > 1.0 linear, i.e. > 0 dB) typically correspond to strong corner reflectors, ships, or land features. These are expected in maritime scenes and should NOT be removed without justification."
+    }
+  },
+  "VH": {
+    "polarization": "VH",
+    "n_valid_sampled": 51734567,
+    "min": 3.4151e-06,
+    "max": 24.087168,
+    "mean": 0.00169407,
+    "median": 0.00137162,
+    "std": 0.00908948,
+    "percentiles": {
+      "p1": 0.0002314673,
+      "p5": 0.0004136109,
+      "p25": 0.000856612,
+      "p50": 0.0013716194,
+      "p75": 0.0020886457,
+      "p95": 0.00353834,
+      "p99": 0.00499991
+    },
+    "physical_range_check": "PASS",
+    "ocean_plausibility": "C-band ocean sigma0 for VV typically ranges 0.001-0.1 linear (i.e. -30 to -10 dB). For VH, typically 0.0001-0.01 linear (i.e. -40 to -20 dB). Mean VV ~0.014 and VH ~0.0016 are consistent with open-ocean C-band backscatter.",
+    "dB_mean": -27.711,
+    "dB_median": -28.628,
+    "extreme_outliers": {
+      "p999_threshold": 0.009885,
+      "n_extreme": 355,
+      "extreme_max": 0.184224,
+      "extreme_mean": 0.037124,
+      "interpretation": "Extreme values (sigma0 > 1.0 linear, i.e. > 0 dB) typically correspond to strong corner reflectors, ships, or land features. These are expected in maritime scenes and should NOT be removed without justification."
+    }
+  }
+}
