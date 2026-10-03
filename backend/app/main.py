@@ -15,9 +15,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import (
+    ais_stream,
     analytics,
     attribution,
     drift,
+    environmental,
     events,
     health,
     incidents,
@@ -37,6 +39,7 @@ from app.satellite.pipeline import PipelineJobManager
 from app.services.event_hub import EventHub
 from app.services.inference_service import InferenceService
 from app.services.satellite_service import SceneService
+from app.services.ais_stream_provider import create_aisstream_provider
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -50,6 +53,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
+        # Start AISStream real-time provider if configured
+        ais_provider = create_aisstream_provider(settings.aisstream_api_key)
+        if ais_provider:
+            ais_provider.start()
+            app.state.ais_stream_provider = ais_provider
+
         if settings.use_postgis:
             try:
                 from sqlalchemy import create_engine, text
@@ -62,6 +71,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if settings.seed_demo_data:
             seed_demo_data(repo)
         yield
+        # Cleanup: stop AISStream provider
+        ais_stream_prov = getattr(app.state, "ais_stream_provider", None)
+        if ais_stream_prov:
+            ais_stream_prov.stop()
 
     app = FastAPI(
         title="SAGAR WATCH API",
@@ -123,8 +136,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(analytics.router, prefix=api_prefix)
     app.include_router(attribution.router, prefix=api_prefix)
     app.include_router(drift.router, prefix=api_prefix)
+    app.include_router(environmental.router, prefix=api_prefix)
     app.include_router(system_routes.router, prefix=api_prefix)
     app.include_router(events.router, prefix=api_prefix)
+    app.include_router(ais_stream.router, prefix=api_prefix)
     app.include_router(reviews.router, prefix=api_prefix)
     app.include_router(reports.router, prefix=api_prefix)
 

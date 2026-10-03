@@ -7,6 +7,8 @@ import type {
   MapLayerDef,
   MapLayerId,
   TimeRange,
+  MapStyle,
+  ProjectionMode,
 } from "@/lib/types";
 
 export const MAP_LAYERS: MapLayerDef[] = [
@@ -47,6 +49,23 @@ interface AppState {
   sidebarOpenMobile: boolean;
   detailsOpenMobile: boolean;
 
+  // ── Timeline State (Phase 0) ───────────────────────────────────────
+  /** Current animation progress 0-1 (0 = source T-8h, 1 = detected T-0) */
+  animationProgress: number;
+  /** Whether the timeline is currently playing */
+  isPlaying: boolean;
+  /** Playback speed multiplier */
+  speed: number;
+  /** Time window for the investigation timeline */
+  timeWindow: { start: Date; end: Date };
+
+  // ── Map State (Phase 0) ────────────────────────────────────────────
+  /** Current basemap style */
+  mapStyle: MapStyle;
+  /** Current map projection mode */
+  projectionMode: ProjectionMode;
+
+  // ── Actions ────────────────────────────────────────────────────────
   selectIncident: (incident: Incident, opts?: { flyTo?: boolean }) => void;
   clearSelection: () => void;
   openViewer: (id: string, tab?: ViewerTab) => void;
@@ -61,6 +80,18 @@ interface AppState {
   requestFlyTo: (lon: number, lat: number, zoom?: number) => void;
   setSidebarOpenMobile: (v: boolean) => void;
   setDetailsOpenMobile: (v: boolean) => void;
+
+  // ── Timeline Actions (Phase 0) ─────────────────────────────────────
+  setAnimationProgress: (progress: number) => void;
+  play: () => void;
+  pause: () => void;
+  setSpeed: (speed: number) => void;
+  setTimeWindow: (start: Date, end: Date) => void;
+  resetTimeline: () => void;
+
+  // ── Map Actions (Phase 0) ──────────────────────────────────────────
+  setMapStyle: (style: MapStyle) => void;
+  setProjectionMode: (mode: ProjectionMode) => void;
 }
 
 const defaultLayers = Object.fromEntries(
@@ -72,6 +103,13 @@ const defaultFilters = {
   levels: [] as ConfidenceLevel[],
   timeRange: "24h" as TimeRange,
   region: "All India Region",
+};
+
+/** Default time window: 8 hours before now */
+const getDefaultTimeWindow = () => {
+  const end = new Date();
+  const start = new Date(end.getTime() - 8 * 60 * 60 * 1000);
+  return { start, end };
 };
 
 export const useAppStore = create<AppState>((set) => ({
@@ -86,6 +124,16 @@ export const useAppStore = create<AppState>((set) => ({
   flyTo: null,
   sidebarOpenMobile: false,
   detailsOpenMobile: false,
+
+  // ── Timeline State (Phase 0) ───────────────────────────────────────
+  animationProgress: 1,
+  isPlaying: false,
+  speed: 1,
+  timeWindow: getDefaultTimeWindow(),
+
+  // ── Map State (Phase 0) ────────────────────────────────────────────
+  mapStyle: "satellite",
+  projectionMode: "mercator",
 
   selectIncident: (incident, opts) =>
     set((s) => ({
@@ -132,4 +180,16 @@ export const useAppStore = create<AppState>((set) => ({
 
   setSidebarOpenMobile: (v) => set({ sidebarOpenMobile: v }),
   setDetailsOpenMobile: (v) => set({ detailsOpenMobile: v }),
+
+  // ── Timeline Actions (Phase 0) ─────────────────────────────────────
+  setAnimationProgress: (progress) => set({ animationProgress: Math.max(0, Math.min(1, progress)) }),
+  play: () => set({ isPlaying: true }),
+  pause: () => set({ isPlaying: false }),
+  setSpeed: (speed) => set({ speed }),
+  setTimeWindow: (start, end) => set({ timeWindow: { start, end } }),
+  resetTimeline: () => set({ animationProgress: 0, isPlaying: false }),
+
+  // ── Map Actions (Phase 0) ──────────────────────────────────────────
+  setMapStyle: (mapStyle) => set({ mapStyle }),
+  setProjectionMode: (projectionMode) => set({ projectionMode }),
 }));

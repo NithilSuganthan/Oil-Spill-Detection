@@ -2,6 +2,7 @@ import type {
   AnalyticsSummary,
   AttributionResult,
   DriftResult,
+  EnvironmentalGrid,
   Incident,
   IncidentFilters,
   InvestigationResult,
@@ -113,6 +114,22 @@ const mockApi = {
   async listReports(): Promise<StoredReport[]> {
     return delay([mockReport("IN-250825-001")]);
   },
+  async getPipelineJobs(): Promise<import("./http-client").PipelineJob[]> {
+    return delay([]);
+  },
+  async getSceneProcessing(): Promise<import("./http-client").SceneProcessingState | null> {
+    return delay(null);
+  },
+  async getSatelliteProvider(): Promise<import("./http-client").SatelliteProviderInfo> {
+    return delay({ name: "mock", isReal: false, description: "Mock satellite data", note: "DEMO — synthetic scenes" });
+  },
+  async getEnvironmentalGrid(
+    lat: number,
+    lon: number,
+    timestamp: string,
+  ): Promise<EnvironmentalGrid> {
+    return delay(mockEnvironmentalGrid(lat, lon, timestamp));
+  },
 };
 
 /* ------------------------------------------------------------------ */
@@ -208,32 +225,72 @@ function mockAttribution(incidentId: string): AttributionResult {
   };
 }
 
-/** Mock drift data for demo incidents. */
+/** Mock drift data for demo incidents.
+ *  Generates a realistic backward-trajectory path from estimated source to detected slick,
+ *  using the incident's actual centroid, so every incident has a unique drift visualization.
+ */
 function mockDrift(incidentId: string): DriftResult {
   const incident = INCIDENTS.find((i) => i.id === incidentId);
-  const lat = incident?.centroid?.lat ?? 10.0;
-  const lon = incident?.centroid?.lon ?? 72.0;
+  const slickLat = incident?.centroid?.lat ?? 10.0;
+  const slickLon = incident?.centroid?.lon ?? 72.0;
+
+  // Deterministic seed from incident ID for consistent geometry across reloads
+  let hashSeed = 0;
+  for (let c = 0; c < incidentId.length; c++) hashSeed = ((hashSeed << 5) - hashSeed + incidentId.charCodeAt(c)) | 0;
+  const pseudoRand = (n: number) => {
+    let s = Math.abs(hashSeed + n * 2654435761) | 0;
+    s = ((s >>> 16) ^ s) * 0x45d9f3b;
+    s = ((s >>> 16) ^ s) * 0x45d9f3b;
+    s = (s >>> 16) ^ s;
+    return (s >>> 0) / 4294967296;
+  };
+
+  // Source offset: 0.06–0.12 degrees away, direction varies per incident
+  const angle = pseudoRand(1) * Math.PI * 2;
+  const dist = 0.06 + pseudoRand(2) * 0.06;
+  const srcLat = slickLat + dist * Math.sin(angle);
+  const srcLon = slickLon + dist * Math.cos(angle);
+
+  // Build smooth trajectory path from source -> slick with organic curvature
+  const nPts = 50;
+  const trajectoryPoints: [number, number][] = [];
+  // Add slight midpoint curve offset for organic feel
+  const curveLat = (srcLat + slickLat) / 2 + (pseudoRand(3) - 0.5) * 0.04;
+  const curveLon = (srcLon + slickLon) / 2 + (pseudoRand(4) - 0.5) * 0.04;
+
+  for (let i = 0; i < nPts; i++) {
+    const t = i / (nPts - 1);
+    // Quadratic Bézier interpolation: source -> midCurve -> slick
+    const oneMinusT = 1 - t;
+    const lat = oneMinusT * oneMinusT * srcLat + 2 * oneMinusT * t * curveLat + t * t * slickLat;
+    const lon = oneMinusT * oneMinusT * srcLon + 2 * oneMinusT * t * curveLon + t * t * slickLon;
+    // Add small organic jitter (± 0.003 degrees)
+    const jLat = (pseudoRand(i * 7 + 10) - 0.5) * 0.006;
+    const jLon = (pseudoRand(i * 7 + 11) - 0.5) * 0.006;
+    trajectoryPoints.push([lat + jLat, lon + jLon]);
+  }
+
+  const confidence = 0.52 + pseudoRand(5) * 0.30;
+  const uncertaintyKm = 8 + pseudoRand(6) * 10;
+
   return {
     incidentId,
     method: "first_order_backward_hindcast",
-    slickLatitude: lat,
-    slickLongitude: lon,
-    observationTime: "2026-08-26T01:00:00Z",
+    slickLatitude: slickLat,
+    slickLongitude: slickLon,
+    observationTime: incident?.detectedAt ?? "2026-08-26T01:00:00Z",
     integrationHours: 24,
     timestepMinutes: 15,
     ensembleSize: 50,
-    sourceLatitude: lat - 0.08,
-    sourceLongitude: lon - 0.12,
+    sourceLatitude: srcLat,
+    sourceLongitude: srcLon,
     sourceEarliest: "2026-08-25T01:00:00Z",
     sourceLatest: "2026-08-25T05:00:00Z",
-    uncertaintyKm: 12.5,
+    uncertaintyKm,
     uncertaintyHours: 4.0,
-    confidence: 0.62,
+    confidence,
     qualityFlags: ["DEMO_ENVIRONMENTAL_FORCING"],
-    sourcePoints: Array.from({ length: 50 }, (_, i) => [
-      lat - 0.08 + (Math.sin(i * 0.5) * 0.02),
-      lon - 0.12 + (Math.cos(i * 0.5) * 0.02),
-    ]),
+    sourcePoints: trajectoryPoints,
     provenance: {
       provider: "first_order",
       environmentalProvider: "mock",
@@ -244,14 +301,147 @@ function mockDrift(incidentId: string): DriftResult {
   };
 }
 
+/** Fixed mock criticality matching backend schema exactly. */
+const MOCK_CRITICALITY = {
+  score: 64,
+  level: "HIGH" as const,
+  action: "PRIORITY REVIEW",
+  methodology: "Operational Criticality Index v1.0.0-mvp (DEMO MODE). Heuristic weights — NOT scientifically validated.",
+  normalizationNote: "Coastal/sensitive-area risk unavailable — score normalized across 6 available factors (80% total weight)",
+  factors: [
+    { name: "spill_size", label: "Spill Size", score: 50, maxScore: 100, weight: 0.20, normalizedWeight: 0.25, available: true, source: "incident.areaKm2", explanation: "Spill area: 5.00 km²" },
+    { name: "detection_confidence", label: "Detection Confidence", score: 78, maxScore: 100, weight: 0.15, normalizedWeight: 0.1875, available: true, source: "intelligence.confidenceBreakdown.adjustedConfidence", explanation: "Adjusted confidence: 78.0%" },
+    { name: "coastal_sensitive_risk", label: "Coastal/Sensitive Risk", score: 0, maxScore: 100, weight: 0.20, normalizedWeight: 0, available: false, source: "NOT_AVAILABLE", explanation: "Coastal/sensitive-area risk requires coastline geometry data (not yet implemented)" },
+    { name: "environmental_spreading", label: "Environmental Spreading", score: 29, maxScore: 100, weight: 0.15, normalizedWeight: 0.1875, available: true, source: "intelligence.environmentalReliability", explanation: "Wind: 8.4 kts, Current: 0.31 m/s (low spreading risk)" },
+    { name: "spill_age", label: "Release Window Uncertainty", score: 60, maxScore: 100, weight: 0.10, normalizedWeight: 0.125, available: true, source: "drift.uncertaintyHours", explanation: "Release window uncertainty: 4.8 hours" },
+    { name: "projected_drift_impact", label: "Projected Drift Impact", score: 64, maxScore: 100, weight: 0.10, normalizedWeight: 0.125, available: true, source: "drift.uncertaintyKm", explanation: "Spatial uncertainty: 32.0 km" },
+    { name: "ais_traffic_evidence", label: "AIS Traffic Evidence", score: 72, maxScore: 100, weight: 0.10, normalizedWeight: 0.125, available: true, source: "attribution.candidates", explanation: "Best attribution: 72.0%, 2 candidate(s)" },
+  ],
+  availableFactorCount: 6,
+  totalFactorCount: 7,
+};
+
 /** Mock investigation combining drift + attribution. */
 function mockInvestigation(incidentId: string): InvestigationResult {
+  const drift = mockDrift(incidentId);
+  const attribution = mockAttribution(incidentId);
+
   return {
     incidentId,
-    drift: mockDrift(incidentId),
-    attribution: mockAttribution(incidentId),
+    drift,
+    attribution,
     environment: "DEMO",
     status: "completed",
+    criticality: MOCK_CRITICALITY,
+  };
+}
+
+/** Generate a deterministic mock environmental grid. */
+function mockEnvironmentalGrid(
+  lat: number,
+  lon: number,
+  timestamp: string,
+): EnvironmentalGrid {
+  const resolution = 0.5;
+  const pad = 2.0;
+  const lats: number[] = [];
+  const lons: number[] = [];
+
+  for (let la = lat - pad; la <= lat + pad; la += resolution) {
+    lats.push(Math.round(la * 10000) / 10000);
+  }
+  for (let lo = lon - pad; lo <= lon + pad; lo += resolution) {
+    lons.push(Math.round(lo * 10000) / 10000);
+  }
+
+  const nLat = lats.length;
+  const nLon = lons.length;
+
+  const windGrid: (number | null)[][] = [];
+  const currentGrid: (number | null)[][] = [];
+  const windUGrid: (number | null)[][] = [];
+  const windVGrid: (number | null)[][] = [];
+  const currentUGrid: (number | null)[][] = [];
+  const currentVGrid: (number | null)[][] = [];
+
+  for (let i = 0; i < nLat; i++) {
+    const wRow: (number | null)[] = [];
+    const cRow: (number | null)[] = [];
+    const wuRow: (number | null)[] = [];
+    const wvRow: (number | null)[] = [];
+    const cuRow: (number | null)[] = [];
+    const cvRow: (number | null)[] = [];
+
+    for (let j = 0; j < nLon; j++) {
+      const latF = Math.sin(lats[i] * 0.01745329);
+      const lonF = Math.cos(lons[j] * 0.01745329);
+
+      const wu = 5.0 + 1.5 * Math.sin(Date.parse(timestamp) / 3600000 + lons[j] * 0.1);
+      const wv = 1.0 + 0.5 * latF;
+      const cu = 0.12 + 0.05 * lonF;
+      const cv = 0.08 + 0.03 * latF;
+
+      const wSpeed = Math.sqrt(wu * wu + wv * wv) / 0.514444;
+      const cSpeed = Math.sqrt(cu * cu + cv * cv);
+
+      wRow.push(Math.round(wSpeed * 10) / 10);
+      cRow.push(Math.round(cSpeed * 1000) / 1000);
+      wuRow.push(Math.round(wu * 100) / 100);
+      wvRow.push(Math.round(wv * 100) / 100);
+      cuRow.push(null);
+      cvRow.push(null);
+    }
+
+    windGrid.push(wRow);
+    currentGrid.push(cRow);
+    windUGrid.push(wuRow);
+    windVGrid.push(wvRow);
+    currentUGrid.push(cuRow);
+    currentVGrid.push(cvRow);
+  }
+
+  // Point vectors at center
+  const wuPoint = 5.0 + 1.5 * Math.sin(Date.parse(timestamp) / 3600000 + lon * 0.1);
+  const wvPoint = 1.0 + 0.5 * Math.sin(lat * 0.01745329);
+  const cuPoint = 0.12 + 0.05 * Math.cos(lon * 0.01745329);
+  const cvPoint = 0.08 + 0.03 * Math.sin(lat * 0.01745329);
+  const wSpeedPoint = Math.sqrt(wuPoint * wuPoint + wvPoint * wvPoint) / 0.514444;
+  const cSpeedPoint = Math.sqrt(cuPoint * cuPoint + cvPoint * cvPoint);
+  const wDirPoint = ((Math.atan2(-wuPoint, -wvPoint) * 180) / Math.PI + 360) % 360;
+  const cDirPoint = ((Math.atan2(-cuPoint, -cvPoint) * 180) / Math.PI + 360) % 360;
+
+  return {
+    wind: windGrid,
+    current: currentGrid,
+    windU: windUGrid,
+    windV: windVGrid,
+    currentU: currentUGrid,
+    currentV: currentVGrid,
+    lats,
+    lons,
+    metadata: {
+      provider: "mock",
+      status: "DEMO",
+      dataTime: timestamp,
+      dataAgeMinutes: null,
+      spatialResolutionDeg: null,
+      temporalResolutionHours: null,
+      bbox: [lons[0], lats[0], lons[lons.length - 1], lats[lats.length - 1]],
+      gridSize: [nLat, nLon],
+    },
+    windPoint: {
+      u: wuPoint,
+      v: wvPoint,
+      speedMs: Math.round(wuPoint * 100) / 100,
+      speedKts: Math.round(wSpeedPoint * 10) / 10,
+      directionDeg: Math.round(wDirPoint * 10) / 10,
+    },
+    currentPoint: {
+      u: cuPoint,
+      v: cvPoint,
+      speedMs: Math.round(cSpeedPoint * 1000) / 1000,
+      directionDeg: Math.round(cDirPoint * 10) / 10,
+    },
   };
 }
 
@@ -339,4 +529,24 @@ export function getReport(incidentId: string): Promise<StoredReport | null> {
 
 export function listReports(): Promise<StoredReport[]> {
   return impl.listReports();
+}
+
+export function getPipelineJobs(sceneId?: string): Promise<import("./http-client").PipelineJob[]> {
+  return impl.getPipelineJobs(sceneId);
+}
+
+export function getSceneProcessing(sceneId: string): Promise<import("./http-client").SceneProcessingState | null> {
+  return impl.getSceneProcessing(sceneId);
+}
+
+export function getSatelliteProvider(): Promise<import("./http-client").SatelliteProviderInfo> {
+  return impl.getSatelliteProvider();
+}
+
+export function getEnvironmentalGrid(
+  lat: number,
+  lon: number,
+  timestamp: string,
+): Promise<EnvironmentalGrid> {
+  return impl.getEnvironmentalGrid(lat, lon, timestamp);
 }

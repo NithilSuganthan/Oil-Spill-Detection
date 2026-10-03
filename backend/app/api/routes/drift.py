@@ -299,19 +299,44 @@ def run_investigation(
         settings=settings,
     )
 
-    event_hub.publish("investigation.completed", {
-        "incidentId": incident_id,
-        "candidateCount": attribution_result.candidate_count,
-    })
+    # Step 5: Phase 1 — Operational Criticality Score
+    from app.services.criticality_scorer import compute_criticality
+
+    # Build dicts for the scorer (using camelCase wire format)
+    incident_dict = {
+        "id": incident.id,
+        "areaKm2": incident.area_km2,
+        "confidence": incident.confidence,
+        "region": incident.region,
+        "windSpeedKts": incident.wind_speed_kts,
+    }
+    drift_dict = _drift_result_to_response(drift_result).model_dump(by_alias=True)
 
     from app.api.routes.attribution import _result_to_response as _attr_resp
     attr_response = _attr_resp(attribution_result)
+    attr_dict = _attribution_to_dict(attr_response)
+    intel_dict = intelligence_result.model_dump(by_alias=True)
+
+    criticality_result = compute_criticality(
+        incident=incident_dict,
+        drift=drift_dict,
+        attribution=attr_dict,
+        intelligence=intel_dict,
+    )
+
+    event_hub.publish("investigation.completed", {
+        "incidentId": incident_id,
+        "candidateCount": attribution_result.candidate_count,
+        "criticalityScore": criticality_result.score,
+        "criticalityLevel": criticality_result.level,
+    })
 
     return InvestigationResponse(
         incident_id=incident_id,
         drift=_drift_result_to_response(drift_result),
         attribution=_attribution_to_dict(attr_response),
         intelligence=intelligence_result.model_dump(by_alias=True),
+        criticality=criticality_result,
         environment=env_status,
         status="completed",
     )

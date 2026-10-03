@@ -6,6 +6,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.criticality import CriticalityResponse
+
 
 def to_camel(name: str) -> str:
     head, *rest = name.split("_")
@@ -57,5 +59,6 @@ class InvestigationResponse(CamelModel):
     drift: DriftResponse | None = None
     attribution: dict[str, Any] | None = None
     intelligence: dict[str, Any] | None = None  # Phase 8 detection intelligence
+    criticality: CriticalityResponse | None = None  # Phase 1 operational criticality
     environment: str = "DEMO"  # DEMO or REAL
     status: str = "completed"

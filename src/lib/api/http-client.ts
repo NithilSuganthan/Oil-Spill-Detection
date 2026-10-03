@@ -2,6 +2,7 @@ import type {
   AnalyticsSummary,
   AttributionResult,
   DriftResult,
+  EnvironmentalGrid,
   Incident,
   IncidentFilters,
   InvestigationResult,
@@ -200,4 +201,151 @@ export async function getReport(
 
 export async function listReports(): Promise<StoredReport[]> {
   return getJSON<StoredReport[]>("/reports");
+}
+
+export interface PipelineJob {
+  id: string;
+  sceneId: string;
+  state: string;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+  history: Array<{ state: string; at: string }>;
+}
+
+export async function getPipelineJobs(sceneId?: string): Promise<PipelineJob[]> {
+  const params = sceneId ? new URLSearchParams({ scene_id: sceneId }) : undefined;
+  return getJSON<PipelineJob[]>("/pipeline/jobs", params);
+}
+
+export interface SceneProcessingState {
+  sceneId: string;
+  state: string;
+  isRealData: boolean;
+  note: string | null;
+  availableProducts: string[];
+  previewAvailable: boolean;
+  preprocessing?: {
+    status: string;
+    calibrationMethod: string;
+    calibrationUnits: string;
+    outputCrs: string;
+    outputs: string[];
+    previews: string[];
+    gcps: number;
+    qualityFailures: string[];
+    elapsedS: number;
+  };
+}
+
+export async function getSceneProcessing(sceneId: string): Promise<SceneProcessingState | null> {
+  try {
+    return await getJSON<SceneProcessingState>(
+      `/satellite/scenes/${encodeURIComponent(sceneId)}/processing`
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("404")) return null;
+    throw err;
+  }
+}
+
+export interface SatelliteProviderInfo {
+  name: string;
+  isReal: boolean;
+  description: string;
+  note: string | null;
+}
+
+export async function getSatelliteProvider(): Promise<SatelliteProviderInfo> {
+  return getJSON<SatelliteProviderInfo>("/satellite/scenes/provider");
+}
+
+export async function getEnvironmentalGrid(
+  lat: number,
+  lon: number,
+  timestamp: string,
+): Promise<EnvironmentalGrid> {
+  const res = await fetch(`${API_BASE_URL}/environmental/grid`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ lat, lon, timestamp }),
+  });
+  if (!res.ok) {
+    throw new Error(`API ${res.status} ${res.statusText}`);
+  }
+  return (await res.json()) as EnvironmentalGrid;
+}
+
+// ── Real-time AIS Stream ───────────────────────────────────────────────
+
+export interface AISStreamStatus {
+  connected: boolean;
+  freshness: string;
+  total_vessels: number;
+  recent_vessels: number;
+  total_messages: number;
+  last_message_time: string | null;
+  reconnect_count: number;
+}
+
+export async function getAISStatus(): Promise<AISStreamStatus> {
+  return getJSON<AISStreamStatus>("/ais/status");
+}
+
+export async function getAISVessels(): Promise<GeoJSON.FeatureCollection> {
+  return getJSON<GeoJSON.FeatureCollection>("/ais/vessels");
+}
+
+export async function getAISVesselsNearby(
+  west: number,
+  south: number,
+  east: number,
+  north: number,
+): Promise<GeoJSON.FeatureCollection> {
+  const params = new URLSearchParams({
+    west: String(west),
+    south: String(south),
+    east: String(east),
+    north: String(north),
+  });
+  return getJSON<GeoJSON.FeatureCollection>("/ais/vessels/nearby", params);
+}
+
+// ── SSE: Real-time AIS stream ─────────────────────────────────────────
+
+export type AISStreamEventType = "ais.status" | "ais.vessels.update";
+
+export interface AISStreamEvent {
+  type: AISStreamEventType;
+  payload: Record<string, unknown>;
+}
+
+export function connectAISStream(
+  onEvent: (event: AISStreamEvent) => void,
+  onError?: (error: Event) => void,
+): () => void {
+  const eventSource = new EventSource(`${API_BASE_URL}/ais/stream`);
+
+  eventSource.addEventListener("ais.status", ((e: MessageEvent) => {
+    try {
+      const data = JSON.parse(e.data);
+      onEvent({ type: "ais.status", payload: data.payload ?? data });
+    } catch { /* ignore parse errors */ }
+  }) as EventListener);
+
+  eventSource.addEventListener("ais.vessels.update", ((e: MessageEvent) => {
+    try {
+      const data = JSON.parse(e.data);
+      onEvent({ type: "ais.vessels.update", payload: data.payload ?? data });
+    } catch { /* ignore parse errors */ }
+  }) as EventListener);
+
+  eventSource.onerror = onError ?? (() => {});
+
+  return () => {
+    eventSource.close();
+  };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { SlidersHorizontal, RotateCcw, Radio } from "lucide-react";
+import { SlidersHorizontal, RotateCcw, Radio, Clock, MapPin, AlertTriangle } from "lucide-react";
 import type { ConfidenceLevel, Incident, TimeRange } from "@/lib/types";
 import { INDIAN_REGIONS } from "@/lib/types";
 import { useAppStore } from "@/lib/store/use-app-store";
@@ -11,36 +11,82 @@ import { Select } from "@/components/ui/select";
 import { Badge, levelTone } from "@/components/ui/badge";
 import { EmptyState, ErrorState, LoadingBlock } from "@/components/ui/states";
 
+function StatusDot({ status }: { status: string }) {
+  const color =
+    status === "completed"
+      ? "bg-signal-green"
+      : status === "processing"
+        ? "bg-signal-cyan animate-status-blink"
+        : "bg-signal-amber";
+  return (
+    <span className="relative flex h-2 w-2">
+      {(status === "processing") && (
+        <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-pulse-dot bg-signal-cyan" />
+      )}
+      <span className={cn("relative inline-flex h-2 w-2 rounded-full", color)} />
+    </span>
+  );
+}
+
+function StatusLabel({ status }: { status: string }) {
+  const label =
+    status === "completed"
+      ? "COMPLETED"
+      : status === "processing"
+        ? "ANALYZING"
+        : "UNDER REVIEW";
+  const tone =
+    status === "completed"
+      ? "green"
+      : status === "processing"
+        ? "cyan"
+        : "low";
+  return <Badge tone={tone}>{label}</Badge>;
+}
+
 export function IncidentCard({
   incident,
   selected,
   onClick,
+  isNew,
 }: {
   incident: Incident;
   selected: boolean;
   onClick: () => void;
+  isNew?: boolean;
 }) {
+  const [hovered, setHovered] = React.useState(false);
+
   return (
     <button
       onClick={onClick}
       aria-pressed={selected}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       className={cn(
-        "focus-ring group w-full rounded-md border px-3 py-2.5 text-left transition-all",
+        "focus-ring group w-full rounded-md border px-3 py-2.5 text-left transition-all duration-200",
         selected
-          ? "border-signal-cyan/60 bg-signal-cyan/[0.07] shadow-panel"
-          : "border-line bg-base-850/60 hover:border-line-bright hover:bg-base-800/80"
+          ? "border-signal-cyan/60 bg-signal-cyan/[0.07] shadow-panel glow-pulse"
+          : "border-line bg-base-850/60 hover:border-line-bright hover:bg-base-800/80",
+        isNew && "highlight-new"
       )}
     >
+      {/* Row 1: ID + Level badge + status dot */}
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-xs font-semibold tracking-wide text-ink">
-          {incident.id}
-        </span>
+        <div className="flex items-center gap-2">
+          <StatusDot status={incident.status} />
+          <span className="font-mono text-xs font-semibold tracking-wide text-ink">
+            {incident.id}
+          </span>
+        </div>
         <Badge tone={levelTone[incident.level]}>{incident.level}</Badge>
       </div>
+
+      {/* Row 2: Confidence bar */}
       <div className="mt-1.5 flex items-center gap-3">
         <div className="h-1 flex-1 overflow-hidden rounded-full bg-base-700">
           <div
-            className="h-full rounded-full transition-all"
+            className="h-full rounded-full transition-all duration-500"
             style={{
               width: `${incident.confidence * 100}%`,
               backgroundColor:
@@ -56,10 +102,32 @@ export function IncidentCard({
           {formatPercent(incident.confidence)}
         </span>
       </div>
-      <div className="mt-1 flex items-center justify-between font-mono text-[11px] text-ink-faint">
-        <span>{formatArea(incident.areaKm2)} km²</span>
-        <span>{formatISTTimeShort(incident.detectedAt)} IST</span>
+
+      {/* Row 3: Area + Time + Status (always visible) */}
+      <div className="mt-1.5 flex items-center justify-between font-mono text-[11px] text-ink-faint">
+        <span className="flex items-center gap-1">
+          <MapPin className="h-2.5 w-2.5" />
+          {formatArea(incident.areaKm2)} km²
+        </span>
+        <span className="flex items-center gap-1">
+          <Clock className="h-2.5 w-2.5" />
+          {formatISTTimeShort(incident.detectedAt)} IST
+        </span>
       </div>
+
+      {/* Expanded row on hover: region + location */}
+      {hovered && (
+        <div className="mt-2 border-t border-line/50 pt-2 animate-fade-in">
+          <div className="flex items-center justify-between text-[10px] text-ink-faint">
+            <span className="truncate max-w-[160px]">{incident.locationDescription}</span>
+            <StatusLabel status={incident.status} />
+          </div>
+          <div className="mt-1 flex items-center justify-between text-[10px] text-ink-faint">
+            <span>Region: {incident.region}</span>
+            <span>{incident.satellite}</span>
+          </div>
+        </div>
+      )}
     </button>
   );
 }
@@ -163,12 +231,39 @@ export function DetectionsSidebar({
   const selectedIncidentId = useAppStore((s) => s.selectedIncidentId);
   const selectIncident = useAppStore((s) => s.selectIncident);
 
+  const incidentIdsRef = React.useRef<Set<string>>(new Set());
+  const [newIds, setNewIds] = React.useState<Set<string>>(new Set());
+
+  React.useEffect(() => {
+    const currentIds = new Set(incidents.map((i) => i.id));
+    const firstLoad = incidentIdsRef.current.size === 0;
+    if (!firstLoad) {
+      const added = incidents.filter((i) => !incidentIdsRef.current.has(i.id));
+      if (added.length > 0) {
+        setNewIds((prev) => {
+          const next = new Set(prev);
+          added.forEach((a) => next.add(a.id));
+          return next;
+        });
+        // Clear after animation
+        setTimeout(() => {
+          setNewIds((prev) => {
+            const next = new Set(prev);
+            added.forEach((a) => next.delete(a.id));
+            return next;
+          });
+        }, 2500);
+      }
+    }
+    incidentIdsRef.current = currentIds;
+  }, [incidents]);
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="panel-header shrink-0">
         <div className="flex items-center gap-2">
           <Radio className="h-3.5 w-3.5 text-signal-cyan" />
-          <span className="panel-title">Detections</span>
+          <span className="panel-title">Model Detections</span>
         </div>
         <span className="font-mono text-[11px] tabular-nums text-signal-teal">
           {isLoading ? "…" : incidents.length} active
@@ -216,6 +311,7 @@ export function DetectionsSidebar({
                 incident={inc}
                 selected={inc.id === selectedIncidentId}
                 onClick={() => selectIncident(inc)}
+                isNew={newIds.has(inc.id)}
               />
             </div>
           ))

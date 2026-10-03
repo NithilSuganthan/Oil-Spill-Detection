@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, ShieldCheck, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { FileText, ShieldCheck, AlertTriangle, CheckCircle, Clock, FileDown } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
-import { generateReport, getReport, getAllIncidents } from "@/lib/api/client";
+import { generateReport, getReport, getAllIncidents, getIncident, getDrift, getAttribution } from "@/lib/api/client";
+import { generateInvestigationPDF } from "@/lib/pdf/generate-report-pdf";
 import type { Incident, StoredReport } from "@/lib/types";
 
 export default function ReportsPage() {
@@ -83,6 +84,28 @@ export default function ReportsPage() {
             className="rounded border border-signal-cyan/60 bg-signal-cyan/10 px-4 py-2 font-mono text-[11px] uppercase tracking-wider text-signal-cyan hover:bg-signal-cyan/20 disabled:opacity-50"
           >
             {generating ? "GENERATING..." : "GENERATE INVESTIGATION REPORT"}
+          </button>
+
+          <button
+            onClick={async () => {
+              if (!report || !selectedIncident) return;
+              const [inc, drift, attribution] = await Promise.all([
+                getIncident(selectedIncident),
+                getDrift(selectedIncident),
+                getAttribution(selectedIncident),
+              ]);
+              generateInvestigationPDF({
+                incident: inc,
+                drift,
+                attribution,
+                report,
+              });
+            }}
+            disabled={!report}
+            className="rounded border border-amber-400/50 bg-amber-400/10 px-4 py-2 font-mono text-[11px] uppercase tracking-wider text-amber-400 hover:bg-amber-400/20 disabled:opacity-40 flex items-center gap-1.5"
+          >
+            <FileDown className="h-3.5 w-3.5" />
+            DOWNLOAD PDF
           </button>
         </div>
 

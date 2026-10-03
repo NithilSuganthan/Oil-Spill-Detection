@@ -21,7 +21,10 @@ export const metadata: Metadata = {
     template: "%s · SAGAR WATCH",
   },
   description:
-    "Satellite-based maritime intelligence platform for detecting and monitoring oil spills in Indian waters using Sentinel-1 SAR imagery and AI segmentation.",
+    "Satellite-based maritime intelligence platform for detecting and monitoring oil spills in Indian waters using Sentinel-1 SAR imagery and AI segmentation",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

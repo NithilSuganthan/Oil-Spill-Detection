@@ -11,6 +11,7 @@ import {
   Shield,
   Waves,
   Navigation,
+  Timer,
 } from "lucide-react";
 import { getIncident, getScene, getAttribution, getDrift } from "@/lib/api/client";
 import { PageShell } from "@/components/layout/page-shell";
@@ -111,6 +112,50 @@ export default async function IncidentDetailPage({
             {incident.estimatedVolumeTons !== null && (
               <Meta label="Est. Volume" value={`~${incident.estimatedVolumeTons} t (rough)`} />
             )}
+            <p className="mt-2 text-[9px] italic text-ink-faint/70">
+              Potential dark-surface anomaly identified in Sentinel-1 SAR.
+            </p>
+          </section>
+
+          {/* ESTIMATED SPILL AGE */}
+          <section className="panel p-4">
+            <h2 className="panel-title mb-2 flex items-center gap-1.5">
+              <Timer className="h-3.5 w-3.5 text-signal-amber" /> Estimated Spill Age
+            </h2>
+            {drift && drift.sourceEarliest && drift.sourceLatest ? (
+              <div className="space-y-3">
+                <div className="rounded border border-signal-amber/30 bg-signal-amber/5 px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-wider text-ink-faint">Estimated Release Age</p>
+                  <p className="mt-1 font-mono text-xl font-bold text-signal-amber">
+                    ~{drift.uncertaintyHours.toFixed(0)}–{Math.round(drift.uncertaintyHours * 2)} HOURS
+                  </p>
+                  <p className="font-mono text-[10px] text-ink-faint">MODERATE CONFIDENCE</p>
+                </div>
+                <Meta
+                  label="Release Window"
+                  value={`${formatISTTime(drift.sourceEarliest)} — ${formatISTTime(drift.sourceLatest)}`}
+                />
+                <Meta label="Basis" value="Backward drift hindcast" />
+                <Meta label="Secondary" value="Morphology consistency" />
+                <div className="rounded border border-line bg-base-850 px-3 py-2">
+                  <p className="text-[10px] italic text-ink-faint/70">
+                    ⚠ Approximate estimate — derived primarily from the modeled release-time window.
+                    Not a direct measurement of oil weathering.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="rounded border border-line bg-base-850 px-3 py-2">
+                  <p className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">
+                    AGE ESTIMATE: UNAVAILABLE
+                  </p>
+                  <p className="mt-1 text-[11px] text-ink-faint/80">
+                    Reason: Insufficient temporal observations or drift data not yet available.
+                  </p>
+                </div>
+              </div>
+            )}
           </section>
 
           <section className="panel p-4">
@@ -163,6 +208,10 @@ export default async function IncidentDetailPage({
                 (POST /attribution/analyze) to populate this section.
               </p>
             )}
+            <p className="mt-3 text-[9px] italic text-ink-faint/70">
+              Vessel activity is correlated with the estimated source region and release window.
+              Attribution scores rank potential source vessels; they do not establish causation.
+            </p>
           </section>
 
           {/* DRIFT / SOURCE ESTIMATE */}
@@ -243,6 +292,9 @@ export default async function IncidentDetailPage({
                 )}
                 <p className="text-[10px] italic text-ink-faint/70">
                   Source location is an estimate based on backward drift modelling. Not a confirmed origin point.
+                </p>
+                <p className="text-[9px] italic text-ink-faint/70">
+                  Backward modelling estimates the region from which the slick could have originated.
                 </p>
               </div>
             ) : (
