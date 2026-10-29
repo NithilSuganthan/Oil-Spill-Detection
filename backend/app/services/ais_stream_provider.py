@@ -396,6 +396,7 @@ class AISStreamProvider:
     def _handle_position_report(self, data: dict) -> None:
         """Parse a PositionReport and update the vessel cache."""
         try:
+<<<<<<< HEAD
             meta = data.get("MetaData", {})
             msg = data.get("Message", {})
             pr = msg.get("PositionReport", {}) if isinstance(msg, dict) else {}
@@ -418,6 +419,27 @@ class AISStreamProvider:
             cog = pr.get("Cog") or pr.get("CourseOverGround")
             heading = pr.get("TrueHeading")
             shiptype = pr.get("ShipType")
+=======
+            msg = data.get("Message", data)
+
+            # Log the raw Message keys for diagnosis
+            msg_keys = list(msg.keys()) if isinstance(msg, dict) else []
+            logger.info("AISSTREAM POSITION REPORT keys=%s", msg_keys)
+
+            mmsi = str(msg.get("MMSI", ""))
+            if not mmsi:
+                logger.warning("AISSTREAM POSITION REPORT missing MMSI, keys=%s", msg_keys)
+                return
+
+            # Extract position fields
+            lat = msg.get("Latitude")
+            lon = msg.get("Longitude")
+            sog = msg.get("SpeedOverGround")
+            cog = msg.get("CourseOverGround")
+            heading = msg.get("TrueHeading")
+            shipname = msg.get("ShipName")
+            shiptype = msg.get("ShipType")
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
 
             logger.info(
                 "AISSTREAM POSITION REPORT MMSI=%s lat=%s lon=%s sog=%s heading=%s name=%s type=%s",
@@ -440,16 +462,27 @@ class AISStreamProvider:
                 "heading": heading,
                 "shipname": shipname,
                 "shiptype": shiptype,
+<<<<<<< HEAD
                 "imo": meta.get("IMO"),
                 "flag": meta.get("Flag"),
                 "navstat": pr.get("NavigationalStatus"),
+=======
+                "imo": msg.get("IMO"),
+                "flag": msg.get("Flag"),
+                "navstat": msg.get("NavigationalStatus"),
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
             }
 
             self.cache.update(mmsi, pos_data)
             cache_size = self.cache._status.total_vessels
             logger.info(
+<<<<<<< HEAD
                 "AISSTREAM VESSEL PARSED\nMMSI=%s\nname=%s\nlat=%s\nlon=%s\n\nAISSTREAM VESSEL CACHE UPDATE\ncache_size=%d",
                 mmsi, shipname or "unknown", lat, lon, cache_size,
+=======
+                "AISSTREAM VESSEL CACHED MMSI=%s name=%s cache_size=%d",
+                mmsi, shipname or "unknown", cache_size,
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
             )
 
         except Exception as exc:

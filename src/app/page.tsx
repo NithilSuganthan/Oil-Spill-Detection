@@ -16,16 +16,22 @@ import { GlobeMapView } from "@/components/map/globe-map-view";
 import { MapStyleSwitcher } from "@/components/map/map-style-switcher";
 import { LayersPanel } from "@/components/globe/layers-panel";
 import { DataSourcesPanel, type DataSourceItem } from "@/components/globe/data-sources-panel";
+<<<<<<< HEAD
 import { AisSourceToggle } from "@/components/globe/ais-source-toggle";
 import { VesselListPanel } from "@/components/globe/vessel-list-panel";
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
 import { BottomStatusBar, type StatusCard } from "@/components/globe/bottom-status-bar";
 import { TimelineBar, getCurrentISTProgress } from "@/components/globe/timeline-bar";
 import { OilInspector } from "@/components/globe/oil-inspector";
 import { VesselInspector, type VesselData } from "@/components/globe/vessel-inspector";
 import { SarInspector, type SarSceneData } from "@/components/globe/sar-inspector";
 import { useAISStream } from "@/lib/hooks/use-ais-stream";
+<<<<<<< HEAD
 import { useAisTrackHistory } from "@/lib/hooks/use-ais-track-history";
 import { REALTIME_AIS_GEOJSON } from "@/lib/mock-data/realtime-ais";
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
 import { getSatelliteScenes } from "@/lib/api/client";
 import { useAppStore } from "@/lib/store/use-app-store";
 import type { Incident } from "@/lib/types";
@@ -71,8 +77,11 @@ export default function GlobePage() {
 
   const selectIncident = useAppStore((s) => s.selectIncident);
   const setMapStyle = useAppStore((s) => s.setMapStyle);
+<<<<<<< HEAD
   const aisSource = useAppStore((s) => s.aisSource);
   const setAisSource = useAppStore((s) => s.setAisSource);
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
 
   // Default basemap for Globe is photographic satellite imagery
   React.useEffect(() => {
@@ -93,6 +102,7 @@ export default function GlobePage() {
   // Real-time AIS vessel stream hook
   const { status: aisStatus, vesselGeoJSON } = useAISStream();
 
+<<<<<<< HEAD
   // Accumulated real track history from actual PositionReports (only in REAL-TIME mode)
   const liveVesselGeoJSON = aisSource === "realtime" ? vesselGeoJSON : null;
   const realTracks = useAisTrackHistory(liveVesselGeoJSON);
@@ -109,6 +119,8 @@ export default function GlobePage() {
     return null;
   }, [aisSource, vesselGeoJSON]);
 
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
   // REAL-TIME ONLY DATA SEPARATION:
   // The 9 model predictions belong exclusively to /monitor and /investigate.
   // Live globe renders ONLY real active events (empty by default).
@@ -132,6 +144,7 @@ export default function GlobePage() {
     setSelectedVessel(vessel);
   }, []);
 
+<<<<<<< HEAD
   const handleVesselListSelect = React.useCallback((vessel: VesselData) => {
     setSelectedIncident(null);
     setSelectedSar(null);
@@ -139,6 +152,8 @@ export default function GlobePage() {
     setSearchTarget([vessel.lon, vessel.lat]);
   }, []);
 
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
   const handleSarSelect = React.useCallback((scene: SarSceneData) => {
     setSelectedIncident(null);
     setSelectedVessel(null);
@@ -176,26 +191,36 @@ export default function GlobePage() {
   }, []);
 
   // Live Data Counts
+<<<<<<< HEAD
   const vesselCountDisplay = aisSource === "demo"
     ? `${REALTIME_AIS_GEOJSON.features.length} demo vessels`
     : aisStatus.total_vessels > 0 
       ? `${aisStatus.total_vessels.toLocaleString()} vessels` 
       : "No vessels";
+=======
+  const vesselCountDisplay = aisStatus.total_vessels > 0 
+    ? `${aisStatus.total_vessels.toLocaleString()} vessels` 
+    : "1,842 vessels";
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
 
   const sarCountDisplay = scenes.length > 0
     ? `${scenes.length} acquisitions`
     : "3 acquisitions";
 
+<<<<<<< HEAD
   const aisStatusType: DataSourceItem["status"] = aisSource === "demo"
     ? "FORECAST"
     : aisStatus.connected
       ? "LIVE"
       : "UNAVAILABLE";
 
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
   const dataSources: DataSourceItem[] = React.useMemo(
     () => [
       {
         id: "ais",
+<<<<<<< HEAD
         label: aisSource === "demo" ? "AIS (Demo)" : "AIS (AISStream)",
         icon: Ship,
         status: aisStatusType,
@@ -204,6 +229,14 @@ export default function GlobePage() {
           ? "Simulated data"
           : `${new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour12: false })} IST`,
         color: aisSource === "demo" ? "#fbbf24" : "#e2e8f0",
+=======
+        label: "AIS (AISStream)",
+        icon: Ship,
+        status: aisStatus.connected ? "LIVE" : "NRT",
+        detail: vesselCountDisplay,
+        updated: `${new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour12: false })} IST`,
+        color: "#e2e8f0",
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
       },
       {
         id: "sar",
@@ -233,7 +266,11 @@ export default function GlobePage() {
         color: "#34d399",
       },
     ],
+<<<<<<< HEAD
     [aisSource, aisStatus, aisStatusType, vesselCountDisplay, sarCountDisplay],
+=======
+    [aisStatus, vesselCountDisplay, sarCountDisplay],
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
   );
 
   // Bottom Status Cards
@@ -243,6 +280,7 @@ export default function GlobePage() {
         id: "ais-vessels",
         label: "AIS VESSELS",
         icon: Ship,
+<<<<<<< HEAD
         status: aisSource === "demo" ? "DEMO / SIMULATED" : aisStatus.connected ? "REAL-TIME" : "UNAVAILABLE",
         statusColor: aisSource === "demo" ? "text-amber-400" : aisStatus.connected ? "text-emerald-400" : "text-red-400",
         value: aisSource === "demo"
@@ -251,6 +289,14 @@ export default function GlobePage() {
         detail: aisSource === "demo" ? "Simulated demo vessels" : aisStatus.connected ? "Live AIS stream active" : "AISStream unavailable",
         sparkline: [1200, 1500, 1800, 2100, 2431],
         color: aisSource === "demo" ? "#fbbf24" : "#e2e8f0",
+=======
+        status: "REAL-TIME",
+        statusColor: "text-emerald-400",
+        value: aisStatus.total_vessels > 0 ? aisStatus.total_vessels.toLocaleString() : "1,842",
+        detail: "Live AIS stream active",
+        sparkline: [1200, 1500, 1800, 2100, 2431],
+        color: "#e2e8f0",
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
       },
       {
         id: "sar-coverage",
@@ -297,7 +343,11 @@ export default function GlobePage() {
         color: "#34d399",
       },
     ],
+<<<<<<< HEAD
     [aisSource, aisStatus, scenes],
+=======
+    [aisStatus, scenes],
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
   );
 
   return (
@@ -312,12 +362,19 @@ export default function GlobePage() {
           onIncidentSelect={handleIncidentSelect}
           onVesselSelect={handleVesselSelect}
           onSarSelect={handleSarSelect}
+<<<<<<< HEAD
           vesselGeoJSON={effectiveVesselGeoJSON}
           selectedVesselMmsi={selectedVessel?.mmsi}
           activeLayers={activeLayers}
           searchTarget={searchTarget}
           dataSource={aisSource}
           realTracks={realTracks}
+=======
+          vesselGeoJSON={vesselGeoJSON}
+          selectedVesselMmsi={selectedVessel?.mmsi}
+          activeLayers={activeLayers}
+          searchTarget={searchTarget}
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
         />
 
         {/* LEFT: Floating Layers Dock & Real-time Intelligence Stack */}
@@ -327,6 +384,7 @@ export default function GlobePage() {
             onToggle={handleLayerToggle}
             onReset={handleLayersReset}
           />
+<<<<<<< HEAD
           <AisSourceToggle
             aisSource={aisSource}
             onSourceChange={setAisSource}
@@ -339,6 +397,8 @@ export default function GlobePage() {
             selectedVesselMmsi={selectedVessel?.mmsi}
             onVesselSelect={handleVesselListSelect}
           />
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
           <DataSourcesPanel sources={dataSources} />
         </div>
 
@@ -356,7 +416,10 @@ export default function GlobePage() {
           <div className="absolute top-3 right-14 z-10">
             <VesselInspector
               vessel={selectedVessel}
+<<<<<<< HEAD
               aisSource={aisSource}
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
               onClose={() => setSelectedVessel(null)}
               onViewTrack={() => {
                 setActiveLayers((prev) => ({ ...prev, "ais-tracks": true }));

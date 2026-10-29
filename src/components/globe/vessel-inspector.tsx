@@ -1,7 +1,11 @@
 "use client";
 
 import * as React from "react";
+<<<<<<< HEAD
 import { Ship, X, Navigation, Compass, Clock, Route, MapPin } from "lucide-react";
+=======
+import { Ship, X, Navigation, Compass, Clock, Route } from "lucide-react";
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
 import { cn } from "@/lib/utils";
 
 export interface VesselData {
@@ -20,7 +24,10 @@ export interface VesselData {
 
 interface VesselInspectorProps {
   vessel: VesselData;
+<<<<<<< HEAD
   aisSource?: "realtime" | "demo";
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
   onClose: () => void;
   onViewTrack?: () => void;
   className?: string;
@@ -43,6 +50,7 @@ function getVesselColor(type?: string) {
   return VESSEL_TYPE_COLORS.default;
 }
 
+<<<<<<< HEAD
 function formatCoord(val: number, isLat: boolean): string {
   const dir = isLat ? (val >= 0 ? "N" : "S") : val >= 0 ? "E" : "W";
   return `${Math.abs(val).toFixed(4)}° ${dir}`;
@@ -61,12 +69,19 @@ function formatTimeUTC(iso: string | undefined): string {
 export function VesselInspector({
   vessel,
   aisSource = "demo",
+=======
+export function VesselInspector({
+  vessel,
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
   onClose,
   onViewTrack,
   className,
 }: VesselInspectorProps) {
   const vesselColor = getVesselColor(vessel.vesselType);
+<<<<<<< HEAD
   const isRealtime = aisSource === "realtime";
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
 
   return (
     <div
@@ -93,6 +108,7 @@ export function VesselInspector({
       </div>
 
       <div className="px-3 py-3 space-y-2.5">
+<<<<<<< HEAD
         {/* Vessel name */}
         <div>
           <div className="font-mono text-[8px] text-ink-faint uppercase">Vessel</div>
@@ -161,6 +177,55 @@ export function VesselInspector({
             </div>
           </div>
         </div>
+=======
+        {/* Vessel identity */}
+        <div>
+          <div className="font-mono text-[10px] text-ink-faint">MMSI</div>
+          <div className="font-mono text-sm font-bold text-ink">{vessel.mmsi}</div>
+        </div>
+
+        {vessel.name && (
+          <div>
+            <div className="font-mono text-[10px] text-ink-faint">Name</div>
+            <div className="font-mono text-xs font-medium text-ink">{vessel.name}</div>
+          </div>
+        )}
+
+        {vessel.vesselType && (
+          <div className="flex items-center gap-1.5">
+            <span className={cn("font-mono text-[10px] font-bold", vesselColor)}>
+              {vessel.vesselType}
+            </span>
+          </div>
+        )}
+
+        {/* Telemetry */}
+        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-line/30">
+          {vessel.sog != null && (
+            <TelemetryItem
+              icon={Navigation}
+              label="SOG"
+              value={`${vessel.sog.toFixed(1)} kn`}
+            />
+          )}
+          {vessel.heading != null && (
+            <TelemetryItem
+              icon={Compass}
+              label="HDG"
+              value={`${Math.round(vessel.heading)}°`}
+            />
+          )}
+        </div>
+
+        {vessel.lastUpdate && (
+          <div className="flex items-center gap-1.5 pt-1 border-t border-line/30">
+            <Clock className="h-2.5 w-2.5 text-ink-faint" />
+            <span className="font-mono text-[8px] text-ink-faint">
+              UPDATED {vessel.lastUpdate}
+            </span>
+          </div>
+        )}
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
 
         {/* Actions */}
         <div className="flex gap-1.5 pt-1">
@@ -178,3 +243,26 @@ export function VesselInspector({
     </div>
   );
 }
+<<<<<<< HEAD
+=======
+
+function TelemetryItem({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-1">
+        <Icon className="h-2.5 w-2.5 text-ink-faint" />
+        <span className="font-mono text-[8px] text-ink-faint">{label}</span>
+      </div>
+      <div className="font-mono text-[11px] font-bold text-ink tabular-nums">{value}</div>
+    </div>
+  );
+}
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b

@@ -10,7 +10,10 @@ const NAV_ITEMS = [
   { href: "/", label: "GLOBE" },
   { href: "/monitor", label: "MONITOR" },
   { href: "/investigate", label: "INVESTIGATE" },
+<<<<<<< HEAD
   { href: "/alerts", label: "ALERTS" },
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
   { href: "/live-analysis", label: "LIVE ANALYSIS" },
   { href: "/reports", label: "REPORTS" },
 ] as const;

@@ -16,7 +16,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import (
     ais_stream,
+<<<<<<< HEAD
     alerts,
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
     analytics,
     attribution,
     drift,

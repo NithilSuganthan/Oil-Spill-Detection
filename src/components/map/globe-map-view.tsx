@@ -94,8 +94,11 @@ export interface GlobeMapViewProps {
   selectedVesselMmsi?: string | null;
   activeLayers?: Record<string, boolean>;
   searchTarget?: [number, number] | null;
+<<<<<<< HEAD
   dataSource?: "realtime" | "demo";
   realTracks?: Array<{ mmsi: string; points: Array<{ lon: number; lat: number; timestamp: number }> }>;
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
   className?: string;
 }
 
@@ -108,8 +111,11 @@ export function GlobeMapView({
   selectedVesselMmsi,
   activeLayers = {},
   searchTarget,
+<<<<<<< HEAD
   dataSource = "demo",
   realTracks,
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
   className,
 }: GlobeMapViewProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -123,6 +129,7 @@ export function GlobeMapView({
   const mapStyle = useAppStore((s) => s.mapStyle);
 
   const effectiveVesselGeoJSON = React.useMemo(() => {
+<<<<<<< HEAD
     if (dataSource === "demo") {
       return REALTIME_AIS_GEOJSON;
     }
@@ -132,6 +139,13 @@ export function GlobeMapView({
     }
     return null;
   }, [vesselGeoJSON, dataSource]);
+=======
+    if (vesselGeoJSON && vesselGeoJSON.features && vesselGeoJSON.features.length > 0) {
+      return vesselGeoJSON;
+    }
+    return REALTIME_AIS_GEOJSON;
+  }, [vesselGeoJSON]);
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
 
   /* ---------- Map Initialization ---------- */
   React.useEffect(() => {
@@ -168,12 +182,19 @@ export function GlobeMapView({
         setReady(true);
         try {
           addSarSwathsLayer(map, onSarSelect);
+<<<<<<< HEAD
           addVesselTracksLayer(map, effectiveVesselGeoJSON, selectedVesselMmsi, dataSource, realTracks);
           addOceanCurrentFlowLayer(map);
           addWindFlowLayer(map);
           if (effectiveVesselGeoJSON) {
             addVesselLayer(map, effectiveVesselGeoJSON, onVesselSelect);
           }
+=======
+          addVesselTracksLayer(map, selectedVesselMmsi);
+          addOceanCurrentFlowLayer(map);
+          addWindFlowLayer(map);
+          addVesselLayer(map, effectiveVesselGeoJSON, onVesselSelect);
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
         } catch (e) {
           console.warn("Globe layer init error caught safely:", e);
         }
@@ -240,12 +261,19 @@ export function GlobeMapView({
 
       try {
         addSarSwathsLayer(mapNow, onSarSelect);
+<<<<<<< HEAD
         addVesselTracksLayer(mapNow, effectiveVesselGeoJSON, selectedVesselMmsi, dataSource, realTracks);
         addOceanCurrentFlowLayer(mapNow);
         addWindFlowLayer(mapNow);
         if (effectiveVesselGeoJSON) {
           addVesselLayer(mapNow, effectiveVesselGeoJSON, onVesselSelect);
         }
+=======
+        addVesselTracksLayer(mapNow, selectedVesselMmsi);
+        addOceanCurrentFlowLayer(mapNow);
+        addWindFlowLayer(mapNow);
+        addVesselLayer(mapNow, effectiveVesselGeoJSON, onVesselSelect);
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
       } catch (e) {
         console.warn("Globe style-switch layer re-add caught safely:", e);
       }
@@ -305,9 +333,15 @@ export function GlobeMapView({
     const map = mapRef.current;
     if (!map || !ready || !map.isStyleLoaded()) return;
     try {
+<<<<<<< HEAD
       addVesselTracksLayer(map, effectiveVesselGeoJSON, selectedVesselMmsi, dataSource, realTracks);
     } catch { /* ignore */ }
   }, [selectedVesselMmsi, effectiveVesselGeoJSON, ready]);
+=======
+      addVesselTracksLayer(map, selectedVesselMmsi);
+    } catch { /* ignore */ }
+  }, [selectedVesselMmsi, ready]);
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
 
   /* ---------- Update Incident Markers ---------- */
   React.useEffect(() => {
@@ -330,9 +364,13 @@ export function GlobeMapView({
     if (!map || !ready || !map.isStyleLoaded()) return;
 
     try {
+<<<<<<< HEAD
       if (effectiveVesselGeoJSON) {
         addVesselLayer(map, effectiveVesselGeoJSON, onVesselSelect);
       }
+=======
+      addVesselLayer(map, effectiveVesselGeoJSON, onVesselSelect);
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
     } catch { /* ignore */ }
   }, [effectiveVesselGeoJSON, ready, onVesselSelect]);
 
@@ -479,6 +517,7 @@ function addSarSwathsLayer(map: maplibregl.Map, onSarSelect?: (scene: SarSceneDa
 
 // ── Vessel Trajectories Layer ──────────────────────────────────────────
 
+<<<<<<< HEAD
 function addVesselTracksLayer(
   map: maplibregl.Map,
   vesselData: GeoJSON.FeatureCollection | null,
@@ -564,11 +603,22 @@ function addVesselTracksLayer(
   }
 
   const trackFeatures: GeoJSON.Feature[] = vesselData.features.map((feat) => {
+=======
+function addVesselTracksLayer(map: maplibregl.Map, selectedMmsi?: string | null) {
+  const sourceId = "vessel-tracks";
+  const pulseSourceId = "vessel-tracks-pulses";
+
+  const trackFeatures: GeoJSON.Feature[] = REALTIME_AIS_GEOJSON.features.map((feat) => {
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
     const coords = (feat.geometry as any).coordinates;
     const props = (feat.properties || {}) as any;
     const heading = props.heading || 0;
     const rad = (heading * Math.PI) / 180;
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
     const p1: [number, number] = [coords[0] - Math.sin(rad) * 4.8, coords[1] - Math.cos(rad) * 4.8];
     const p2: [number, number] = [coords[0] - Math.sin(rad) * 3.2 + 0.3, coords[1] - Math.cos(rad) * 3.2 - 0.2];
     const p3: [number, number] = [coords[0] - Math.sin(rad) * 1.5 - 0.1, coords[1] - Math.cos(rad) * 1.5 + 0.1];
@@ -588,12 +638,20 @@ function addVesselTracksLayer(
     };
   });
 
+<<<<<<< HEAD
   const pulseFeatures: GeoJSON.Feature[] = vesselData.features.flatMap((feat) => {
+=======
+  const pulseFeatures: GeoJSON.Feature[] = REALTIME_AIS_GEOJSON.features.flatMap((feat) => {
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
     const coords = (feat.geometry as any).coordinates;
     const props = (feat.properties || {}) as any;
     const heading = props.heading || 0;
     const rad = (heading * Math.PI) / 180;
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
     const waypoints: [number, number][] = [
       [coords[0] - Math.sin(rad) * 3.2 + 0.3, coords[1] - Math.cos(rad) * 3.2 - 0.2],
       [coords[0] - Math.sin(rad) * 1.5 - 0.1, coords[1] - Math.cos(rad) * 1.5 + 0.1],
@@ -606,8 +664,20 @@ function addVesselTracksLayer(
     }));
   });
 
+<<<<<<< HEAD
   const geojson: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: trackFeatures };
   const pulseGeojson: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: pulseFeatures };
+=======
+  const geojson: GeoJSON.FeatureCollection = {
+    type: "FeatureCollection",
+    features: trackFeatures,
+  };
+
+  const pulseGeojson: GeoJSON.FeatureCollection = {
+    type: "FeatureCollection",
+    features: pulseFeatures,
+  };
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
 
   if (map.getSource(sourceId)) {
     (map.getSource(sourceId) as maplibregl.GeoJSONSource).setData(geojson);
@@ -620,6 +690,7 @@ function addVesselTracksLayer(
   map.addSource(sourceId, { type: "geojson", data: geojson });
   map.addSource(pulseSourceId, { type: "geojson", data: pulseGeojson });
 
+<<<<<<< HEAD
   addTrackLayers(map, sourceId, pulseSourceId, selectedMmsi);
 }
 
@@ -629,6 +700,8 @@ function addTrackLayers(
   pulseSourceId: string,
   selectedMmsi?: string | null,
 ) {
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
   map.addLayer({
     id: "vessel-tracks-line",
     type: "line",

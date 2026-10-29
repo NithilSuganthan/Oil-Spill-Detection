@@ -354,6 +354,7 @@ export function connectAISStream(
     eventSource.close();
   };
 }
+<<<<<<< HEAD
 
 // ── Operational Alerts ─────────────────────────────────────────────────
 
@@ -412,3 +413,5 @@ export async function updateAlertStatus(
   return (await res.json()) as OperationalAlert;
 }
 
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b

@@ -463,6 +463,7 @@ export interface EnvironmentalGrid {
   windPoint: WindVector | null;
   currentPoint: CurrentVector | null;
 }
+<<<<<<< HEAD
 
 // ── Operational Alerts ───────────────────────────────────────────────
 
@@ -525,3 +526,5 @@ export interface AlertAnalysisResult {
   reason: string;
 }
 
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b

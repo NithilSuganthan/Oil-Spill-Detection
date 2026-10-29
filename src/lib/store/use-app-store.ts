@@ -65,10 +65,13 @@ interface AppState {
   /** Current map projection mode */
   projectionMode: ProjectionMode;
 
+<<<<<<< HEAD
   // ── AIS Data Source (Phase 0) ──────────────────────────────────────
   /** Manual AIS data source selection — no automatic switching */
   aisSource: "realtime" | "demo";
 
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
   // ── Actions ────────────────────────────────────────────────────────
   selectIncident: (incident: Incident, opts?: { flyTo?: boolean }) => void;
   clearSelection: () => void;
@@ -96,9 +99,12 @@ interface AppState {
   // ── Map Actions (Phase 0) ──────────────────────────────────────────
   setMapStyle: (style: MapStyle) => void;
   setProjectionMode: (mode: ProjectionMode) => void;
+<<<<<<< HEAD
 
   // ── AIS Source Actions ─────────────────────────────────────────────
   setAisSource: (source: "realtime" | "demo") => void;
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
 }
 
 const defaultLayers = Object.fromEntries(
@@ -142,9 +148,12 @@ export const useAppStore = create<AppState>((set) => ({
   mapStyle: "satellite",
   projectionMode: "mercator",
 
+<<<<<<< HEAD
   // ── AIS Data Source (Phase 0) ──────────────────────────────────────
   aisSource: "demo",
 
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
   selectIncident: (incident, opts) =>
     set((s) => ({
       selectedIncidentId: incident.id,
@@ -202,7 +211,10 @@ export const useAppStore = create<AppState>((set) => ({
   // ── Map Actions (Phase 0) ──────────────────────────────────────────
   setMapStyle: (mapStyle) => set({ mapStyle }),
   setProjectionMode: (projectionMode) => set({ projectionMode }),
+<<<<<<< HEAD
 
   // ── AIS Source Actions ─────────────────────────────────────────────
   setAisSource: (aisSource) => set({ aisSource }),
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
 }));

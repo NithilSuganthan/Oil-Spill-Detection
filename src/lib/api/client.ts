@@ -135,6 +135,7 @@ const mockApi = {
   ): Promise<EnvironmentalGrid> {
     return delay(mockEnvironmentalGrid(lat, lon, timestamp));
   },
+<<<<<<< HEAD
   async getAlerts(filters?: { status?: AlertStatus; severity?: AlertSeverity }): Promise<OperationalAlert[]> {
     let list = [...mockAlertsStore];
     if (filters?.status) list = list.filter((a) => a.status === filters.status);
@@ -161,6 +162,8 @@ const mockApi = {
     alert.status = status;
     return delay({ ...alert });
   },
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
 };
 
 const mockAlertsStore: OperationalAlert[] = [];
@@ -680,6 +683,7 @@ export function getEnvironmentalGrid(
 ): Promise<EnvironmentalGrid> {
   return impl.getEnvironmentalGrid(lat, lon, timestamp);
 }
+<<<<<<< HEAD
 
 export function getAlerts(filters?: {
   status?: AlertStatus;
@@ -707,3 +711,5 @@ export function updateAlertStatus(
   return impl.updateAlertStatus(alertId, status);
 }
 
+=======
+>>>>>>> c445e14ea3094989fadcfa63b3423d8312faec8b
