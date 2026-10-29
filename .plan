@@ -1,0 +1,64 @@
+# Plan: AIS DATA SOURCE Toggle on Global Page
+
+## Context
+The user wants a manual two-option toggle (REAL-TIME / DEMO) for the AIS data source on the Global (Globe) page. Currently, the system auto-falls back from real-time AISStream data to demo data when the backend is unavailable. The new toggle must give the user explicit control with no automatic switching.
+
+## Files to Modify
+
+| # | File | Change |
+|---|------|--------|
+| 1 | `src/lib/store/use-app-store.ts` | Add `aisSource` state + `setAisSource` action |
+| 2 | `src/components/globe/ais-source-toggle.tsx` | **New file** — the toggle component |
+| 3 | `src/components/map/globe-map-view.tsx` | Remove auto-fallback to demo data |
+| 4 | `src/app/page.tsx` | Wire toggle into page, pass correct data, update status indicators |
+
+## Implementation Steps
+
+### Step 1: Zustand Store (`use-app-store.ts`)
+- Add `aisSource: "realtime" | "demo"` to `AppState` interface
+- Add `setAisSource: (source: "realtime" | "demo") => void` action
+- Default value: `"demo"` (safe default — shows demo data on first load)
+
+### Step 2: New Component (`ais-source-toggle.tsx`)
+Create `src/components/globe/ais-source-toggle.tsx`:
+- Small glass-panel widget matching the existing panel aesthetic
+- Two toggle buttons: `[ REAL-TIME ]` and `[ DEMO ]`
+- Status indicator: green dot + "REAL-TIME" when realtime selected, amber dot + "DEMO / SIMULATED" when demo selected
+- Shows "AISSTREAM" label as the source name
+- Props: `aisSource`, `onSourceChange`
+- Styled to match existing `LayersPanel` / `DataSourcesPanel` glass-panel aesthetic
+- Compact — sits in the left panel stack without dominating the globe
+
+### Step 3: GlobeMapView (`globe-map-view.tsx`)
+- Change `effectiveVesselGeoJSON` memo: accept a new prop `dataSource?: "realtime" | "demo"`
+- When `dataSource === "realtime"`: use `vesselGeoJSON` prop only, never fall back to `REALTIME_AIS_GEOJSON`
+- When `dataSource === "demo"`: always use `REALTIME_AIS_GEOJSON`, ignore `vesselGeoJSON` prop
+- Add `dataSource` to `GlobeMapViewProps`
+
+### Step 4: Globe Page (`page.tsx`)
+- Import `AisSourceToggle` and `useAppStore` (already imported)
+- Read `aisSource` from store
+- Compute `effectiveVesselGeoJSON` based on source:
+  - `"realtime"` → pass `vesselGeoJSON` from `useAISStream()` (or `null` if unavailable)
+  - `"demo"` → pass `REALTIME_AIS_GEOJSON`
+- Add `<AisSourceToggle>` to the left panel stack (below `LayersPanel`, above `DataSourcesPanel`)
+- Update `dataSources` AIS entry status to reflect actual state:
+  - If realtime + connected → `"LIVE"`
+  - If realtime + disconnected → `"UNAVAILABLE"`
+  - If demo → `"DEMO"`
+- Update `statusCards` AIS entry similarly
+- Pass `dataSource` prop to `<GlobeMapView>`
+
+## What NOT to Modify
+- Monitor, Investigation, SAR, oil detection, environmental functionality — all untouched
+- Backend API — no changes
+- AIS stream hook internals — works as-is, just conditionally consumed
+- Vessel rendering pipeline — same `addVesselLayer()` for both sources
+- Other pages — only Global page (`src/app/page.tsx`)
+
+## Verification
+- `npm run build` (or `next build`) to verify no type errors
+- Visual check: toggle appears in left panel stack on globe page
+- REAL-TIME selected: green indicator, attempts AISStream connection, shows "UNAVAILABLE" if backend not running
+- DEMO selected: amber indicator, shows 20 preloaded vessels, labeled "DEMO / SIMULATED"
+- Switching between modes immediately updates the globe without page refresh

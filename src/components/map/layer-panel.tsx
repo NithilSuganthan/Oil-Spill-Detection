@@ -94,10 +94,10 @@ export function LayerPanel({
 }
 
 const LEGEND_ITEMS = [
-  { color: "#ef4444", label: "High confidence (≥80%)" },
-  { color: "#ea580c", label: "Medium confidence (65–80%)" },
-  { color: "#ca8a04", label: "Low confidence (<65%)" },
-  { color: "#38bdf8", label: "Satellite scene coverage" },
+  { color: "#ef4444", label: "High confidence (≥80%)", shape: "polygon" as const },
+  { color: "#f97316", label: "Medium confidence (65–80%)", shape: "polygon" as const },
+  { color: "#eab308", label: "Low confidence (<65%)", shape: "polygon" as const },
+  { color: "#38bdf8", label: "Satellite scene coverage", shape: "polygon" as const },
 ];
 
 export function MapLegend({ visible }: { visible: boolean }) {
@@ -117,6 +117,13 @@ export function MapLegend({ visible }: { visible: boolean }) {
             <span className="text-[11px] text-ink-dim">{item.label}</span>
           </li>
         ))}
+        <li className="flex items-center gap-2 border-t border-line/50 pt-1 mt-1">
+          <span className="relative flex h-2.5 w-2.5 items-center justify-center">
+            <span className="absolute h-2.5 w-2.5 rounded-full bg-signal-red/30" />
+            <span className="relative h-1.5 w-1.5 rounded-full bg-signal-red" />
+          </span>
+          <span className="text-[11px] text-ink-dim">Detection centroid</span>
+        </li>
       </ul>
     </div>
   );

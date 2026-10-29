@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # App
     app_host: str = "0.0.0.0"
     app_port: int = 8000
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001"
     api_version: str = "1.0.0-phase1b"
 
     # Database — empty string => in-memory development repository
@@ -82,8 +82,9 @@ class Settings(BaseSettings):
     polygon_simplify_tolerance_m: float = 25.0
 
     # AIS vessel correlation (Phase 4)
-    ais_provider: str = "mock"          # mock | gfw
+    ais_provider: str = "mock"          # mock | gfw | aisstream
     gfw_api_token: str = ""             # env-only; Global Fishing Watch API token
+    aisstream_api_key: str = ""         # env-only; AISStream WebSocket API key
     ais_search_radius_km: float = 50.0
     ais_time_window_hours: float = 6.0
     ais_distance_weight: float = 0.50

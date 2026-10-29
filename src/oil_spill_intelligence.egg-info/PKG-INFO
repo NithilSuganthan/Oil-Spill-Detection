@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: oil-spill-intelligence
+Version: 0.1.0
+Summary: Human-in-the-loop SAR oil-slick detection, ensemble hindcasting, and AIS vessel attribution.
+Requires-Python: >=3.10
+Requires-Dist: numpy>=1.26
+Requires-Dist: pandas>=2.1
+Provides-Extra: ml
+Requires-Dist: torch>=2.2; extra == "ml"
+Requires-Dist: rasterio>=1.3; extra == "ml"
+Requires-Dist: scikit-learn>=1.4; extra == "ml"
+Provides-Extra: ocean
+Requires-Dist: xarray>=2024.1; extra == "ocean"
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"

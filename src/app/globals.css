@@ -18,6 +18,20 @@
   .panel {
     @apply rounded-md border border-line bg-base-900/80 backdrop-blur-sm;
   }
+  .glass-panel {
+    background: rgba(7, 12, 22, 0.82);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    border: 1px solid rgba(27, 42, 68, 0.6);
+    border-radius: 6px;
+  }
+  .glass-panel-tight {
+    background: rgba(7, 12, 22, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(27, 42, 68, 0.5);
+    border-radius: 4px;
+  }
   .panel-header {
     @apply flex h-10 items-center justify-between border-b border-line px-3;
   }
@@ -32,6 +46,20 @@
   }
   .focus-ring {
     @apply outline-none focus-visible:ring-1 focus-visible:ring-signal-cyan/70 focus-visible:ring-offset-1 focus-visible:ring-offset-base-950;
+  }
+  .status-dot {
+    @apply relative inline-flex h-2 w-2;
+  }
+  .status-dot::before {
+    content: '';
+    @apply absolute inline-flex h-full w-full rounded-full opacity-40;
+    background: currentColor;
+    animation: pulse-dot 1.6s ease-in-out infinite;
+  }
+  .status-dot::after {
+    content: '';
+    @apply relative inline-flex h-2 w-2 rounded-full;
+    background: currentColor;
   }
 }
 
@@ -50,6 +78,99 @@
 }
 *::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Pipeline data flow line */
+.pipeline-connector {
+  background: linear-gradient(90deg, transparent, #38bdf8, transparent);
+  background-size: 200% 100%;
+  animation: pipeline-flow 2s linear infinite;
+}
+.pipeline-connector-vertical {
+  background: linear-gradient(180deg, transparent, #38bdf8, transparent);
+  background-size: 100% 200%;
+  animation: pipeline-flow-vertical 2s linear infinite;
+}
+@keyframes pipeline-flow-vertical {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 0% 200%; }
+}
+
+/* Number animation helper */
+.number-change {
+  animation: number-pop 0.3s ease-out;
+}
+
+/* Card highlight for new detections */
+@keyframes highlight-new {
+  0% { box-shadow: 0 0 0 1px rgba(56,189,248,0.5); background-color: rgba(56,189,248,0.1); }
+  100% { box-shadow: none; background-color: transparent; }
+}
+.highlight-new {
+  animation: highlight-new 2s ease-out forwards;
+}
+
+/* Scanning effect for satellite scenes */
+.scan-overlay {
+  position: relative;
+  overflow: hidden;
+}
+.scan-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(56,189,248,0.08) 50%, transparent 100%);
+  animation: scan-sweep 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Tooltip for status bar */
+.status-tooltip {
+  @apply invisible absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded border border-line bg-base-900 px-2.5 py-1.5 text-left text-[10px] text-ink-dim shadow-panel;
+}
+.status-tooltip-trigger:hover .status-tooltip {
+  @apply visible;
+}
+
+/* Section expand animation */
+.section-expand {
+  overflow: hidden;
+  animation: expand-in 0.3s ease-out both;
+}
+
+/* Activity feed item enter */
+@keyframes feed-item-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.feed-item {
+  animation: feed-item-in 0.2s ease-out both;
+}
+
+/* Investigation progress pulse */
+@keyframes progress-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(56,189,248,0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(56,189,248,0); }
+}
+.progress-active {
+  animation: progress-pulse 2s ease-in-out infinite;
+}
+
+/* Map popup compact styles */
+.map-popup-vessel {
+  @apply min-w-[200px] max-w-[260px];
+}
+.map-popup-detection {
+  @apply min-w-[180px] max-w-[240px];
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* MapLibre overrides to match the command-center aesthetic */
@@ -80,3 +201,54 @@
 .maplibregl-canvas:focus {
   outline: none;
 }
+.maplibregl-popup-close-button {
+  color: #93a4bd !important;
+  font-size: 14px !important;
+  padding: 2px 6px !important;
+  line-height: 1 !important;
+}
+.maplibregl-popup-close-button:hover {
+  color: #e6edf5 !important;
+}
+
+/* Maritime Command Center Animations */
+@keyframes source-ring-expand {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+.animate-source-ring-1 {
+  animation: source-ring-expand 3s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+.animate-source-ring-2 {
+  animation: source-ring-expand 3s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+  animation-delay: 1s;
+}
+
+.animate-source-ring-3 {
+  animation: source-ring-expand 3s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+  animation-delay: 2s;
+}
+
+@keyframes slick-pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.4), inset 0 0 12px rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(239, 68, 68, 0.8), inset 0 0 20px rgba(239, 68, 68, 0.4);
+    border-color: rgba(248, 113, 113, 1);
+  }
+}
+
+.animate-slick-glow {
+  animation: slick-pulse-glow 2.5s ease-in-out infinite;
+}
+

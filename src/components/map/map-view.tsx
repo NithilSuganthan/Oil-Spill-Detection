@@ -14,7 +14,6 @@ import {
   DEFAULT_ZOOM,
   INDIA_BOUNDS,
   SEA_LABELS,
-  buildFallbackStyle,
   getMapStyleUrl,
 } from "./map-config";
 import { LEVEL_COLORS, detectionFillExpression } from "./spill-style";
@@ -27,6 +26,12 @@ export interface MapViewProps {
   drift?: DriftResult | null;
   attribution?: AttributionResult | null;
   className?: string;
+  /** Globe or mercator projection. Defaults to store projectionMode. */
+  projectionMode?: "globe" | "mercator";
+  /** Center for initial view [lon, lat]. Defaults to India center. */
+  initialCenter?: [number, number];
+  /** Initial zoom level. Defaults to 4.55. */
+  initialZoom?: number;
 }
 
 function bboxPolygon(scene: SatelliteScene): GeoJSON.Feature<GeoJSON.Polygon> {
@@ -49,7 +54,16 @@ function bboxPolygon(scene: SatelliteScene): GeoJSON.Feature<GeoJSON.Polygon> {
   };
 }
 
-export function MapView({ incidents = [], scenes = [], drift = null, attribution = null, className }: MapViewProps) {
+export function MapView({
+  incidents = [],
+  scenes = [],
+  drift = null,
+  attribution = null,
+  className,
+  projectionMode: projectionModeProp,
+  initialCenter,
+  initialZoom,
+}: MapViewProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<MapLibreMap | null>(null);
   const readyRef = React.useRef(false);
@@ -62,6 +76,11 @@ export function MapView({ incidents = [], scenes = [], drift = null, attribution
   const selectIncident = useAppStore((s) => s.selectIncident);
   const activeLayers = useAppStore((s) => s.activeLayers);
   const flyTo = useAppStore((s) => s.flyTo);
+  const storeProjectionMode = useAppStore((s) => s.projectionMode);
+
+  const projectionMode = projectionModeProp ?? storeProjectionMode;
+  const center = initialCenter ?? DEFAULT_CENTER;
+  const zoom = initialZoom ?? DEFAULT_ZOOM;
 
   const dataRef = React.useRef({ incidents, scenes, drift, attribution });
   dataRef.current = { incidents, scenes, drift, attribution };
@@ -70,54 +89,79 @@ export function MapView({ incidents = [], scenes = [], drift = null, attribution
   React.useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: getMapStyleUrl(),
-      center: DEFAULT_CENTER,
-      zoom: DEFAULT_ZOOM,
-      minZoom: 3,
-      maxZoom: 12,
-      attributionControl: { compact: true },
-      dragRotate: false,
-      pitchWithRotate: false,
-    });
-    mapRef.current = map;
+    let isMounted = true;
+    let styleLoadAttempted = false;
 
-    map.on("error", (e) => {
-      // Basemap failure fallback (keeps the ops UI usable offline / blocked tiles)
-      const sourceId = (e as unknown as { sourceId?: string }).sourceId;
-      if (!readyRef.current && sourceId === undefined && e.error) {
-        try {
-          map.setStyle(buildFallbackStyle());
-          map.once("style.load", () => {
-            addDataLayers(map);
-            applyVisibility(map, useAppStore.getState().activeLayers);
-            readyRef.current = true;
-            setReady(true);
-          });
-        } catch {
-          /* ignore */
-        }
+    try {
+      const mapConfig: maplibregl.MapOptions = {
+        container: containerRef.current,
+        style: getMapStyleUrl(),
+        center,
+        zoom,
+        minZoom: projectionMode === "globe" ? 0.5 : 3,
+        maxZoom: 18,
+        attributionControl: { compact: true },
+        dragRotate: false,
+        pitchWithRotate: false,
+      };
+
+      // Set projection mode
+      if (projectionMode === "globe") {
+        (mapConfig as Record<string, unknown>).projection = "globe";
       }
-    });
 
-    map.on("load", () => {
-      addDataLayers(map);
-      applyVisibility(
-        map,
-        useAppStore.getState().activeLayers
-      );
-      readyRef.current = true;
+      const map = new maplibregl.Map(mapConfig);
+      mapRef.current = map;
+
+      const finishInit = () => {
+        if (!isMounted || readyRef.current) return;
+        readyRef.current = true;
+        try {
+          addDataLayers(map);
+          applyVisibility(map, useAppStore.getState().activeLayers);
+        } catch (err) {
+          console.warn("Error adding data layers to map:", err);
+        }
+        setReady(true);
+      };
+
+      if (map.isStyleLoaded()) {
+        finishInit();
+      } else {
+        map.on("load", finishInit);
+        map.on("styledata", finishInit);
+      }
+
+      map.on("error", () => {
+        finishInit();
+      });
+
+      // Safety timer (200ms): guarantee map ready state is set
+      const timer = setTimeout(finishInit, 200);
+    } catch (err) {
+      console.error("MapLibre init error:", err);
       setReady(true);
-    });
+    }
 
     const onFsChange = () => setFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener("fullscreenchange", onFsChange);
 
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapRef.current) {
+        try { mapRef.current.resize(); } catch { /* ignore */ }
+      }
+    });
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
     return () => {
+      isMounted = false;
+      resizeObserver.disconnect();
       document.removeEventListener("fullscreenchange", onFsChange);
-      map.remove();
+      mapRef.current?.remove();
       mapRef.current = null;
+      readyRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -198,29 +242,53 @@ export function MapView({ incidents = [], scenes = [], drift = null, attribution
     });
 
     map.addLayer({
-      id: "detection-pulse",
-      type: "fill",
+      id: "detection-glow",
+      type: "line",
       source: "detections",
-      filter: ["==", ["get", "id"], "__none__"],
       paint: {
-        "fill-color": detectionFillExpression(null) as never,
-        "fill-opacity": 0.35,
+        "line-color": [
+          "match",
+          ["get", "level"],
+          "HIGH",
+          "#ef4444",
+          "MEDIUM",
+          "#f97316",
+          "#eab308",
+        ] as never,
+        "line-width": [
+          "case",
+          ["==", ["get", "id"], useAppStore.getState().selectedIncidentId ?? "__none__"],
+          10,
+          5,
+        ],
+        "line-blur": 6,
+        "line-opacity": 0.9,
       },
     });
+
     map.addLayer({
       id: "detection-fill",
       type: "fill",
       source: "detections",
       paint: {
-        "fill-color": detectionFillExpression(null) as never,
+        "fill-color": [
+          "match",
+          ["get", "level"],
+          "HIGH",
+          "#ef4444",
+          "MEDIUM",
+          "#f97316",
+          "#eab308",
+        ] as never,
         "fill-opacity": [
           "case",
           ["==", ["get", "id"], useAppStore.getState().selectedIncidentId ?? "__none__"],
-          0.5,
-          0.26,
+          0.65,
+          0.35,
         ],
       },
     });
+
     map.addLayer({
       id: "detection-outline",
       type: "line",
@@ -230,18 +298,91 @@ export function MapView({ incidents = [], scenes = [], drift = null, attribution
           "match",
           ["get", "level"],
           "HIGH",
-          LEVEL_COLORS.HIGH.line,
+          "#fca5a5",
           "MEDIUM",
-          LEVEL_COLORS.MEDIUM.line,
-          LEVEL_COLORS.LOW.line,
+          "#fdba74",
+          "#fde047",
         ] as never,
         "line-width": [
           "case",
           ["==", ["get", "id"], useAppStore.getState().selectedIncidentId ?? "__none__"],
           3,
-          1.4,
+          1.8,
         ],
-        "line-opacity": 0.95,
+        "line-opacity": 1.0,
+      },
+    });
+
+    // Centroid markers for each detection
+    map.addSource("detection-centroids", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+    });
+
+    // Outer pulse ring (animated on selection)
+    map.addLayer({
+      id: "centroid-pulse-ring",
+      type: "circle",
+      source: "detection-centroids",
+      filter: ["==", ["get", "selected"], true],
+      paint: {
+        "circle-radius": 12,
+        "circle-color": "#ef4444",
+        "circle-opacity": 0.0,
+        "circle-stroke-color": "#ef4444",
+        "circle-stroke-width": 1.5,
+        "circle-stroke-opacity": 0.0,
+      },
+    });
+
+    // Centroid dots
+    map.addLayer({
+      id: "centroid-dot",
+      type: "circle",
+      source: "detection-centroids",
+      paint: {
+        "circle-radius": [
+          "case",
+          ["==", ["get", "selected"], true],
+          5,
+          3.5,
+        ],
+        "circle-color": [
+          "match",
+          ["get", "level"],
+          "HIGH",
+          "#ef4444",
+          "MEDIUM",
+          "#f97316",
+          "#eab308",
+        ] as never,
+        "circle-stroke-color": "#ffffff",
+        "circle-stroke-width": [
+          "case",
+          ["==", ["get", "selected"], true],
+          2,
+          1,
+        ],
+        "circle-opacity": 1,
+      },
+    });
+
+    // Centroid labels (show on hover or selected)
+    map.addLayer({
+      id: "centroid-label",
+      type: "symbol",
+      source: "detection-centroids",
+      layout: {
+        "text-field": ["get", "id"],
+        "text-size": 10,
+        "text-offset": [0, 1.8],
+        "text-anchor": "top",
+        "text-allow-overlap": false,
+      },
+      paint: {
+        "text-color": "#e6edf5",
+        "text-halo-color": "#070c16",
+        "text-halo-width": 1.5,
       },
     });
 
@@ -252,7 +393,6 @@ export function MapView({ incidents = [], scenes = [], drift = null, attribution
       filter: ["==", ["get", "kind"], "sea"],
       layout: {
         "text-field": ["get", "name"],
-        "text-font": ["Open Sans Regular"],
         "text-size": 11,
         "text-letter-spacing": 0.28,
       },
@@ -278,7 +418,6 @@ export function MapView({ incidents = [], scenes = [], drift = null, attribution
       filter: ["==", ["get", "kind"], "city"],
       layout: {
         "text-field": ["get", "name"],
-        "text-font": ["Open Sans Regular"],
         "text-size": 10,
         "text-offset": [0, 1.1],
         "text-anchor": "top",
@@ -345,6 +484,52 @@ export function MapView({ incidents = [], scenes = [], drift = null, attribution
         "circle-stroke-width": 1.5,
       },
     });
+
+    // Source estimate popup
+    map.on("click", "drift-source-point", (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const props = f.properties;
+      const coords = (f.geometry as GeoJSON.Point).coordinates as [number, number];
+      
+      new maplibregl.Popup({ closeButton: true, maxWidth: '260px' })
+        .setHTML(`
+          <div style="font-family: var(--font-inter), system-ui, sans-serif;">
+            <div style="font-size:10px;color:#fbbf24;margin-bottom:4px;">ESTIMATED SOURCE</div>
+            <div style="font-size:11px;color:#e6edf5;font-family:monospace;">${coords[1].toFixed(4)}°N, ${coords[0].toFixed(4)}°E</div>
+            <div style="margin-top:4px;font-size:9px;color:#5c718f;font-style:italic;">
+              ${props.label || 'Source location is an estimate. Not a confirmed origin point.'}
+            </div>
+          </div>
+        `)
+        .setLngLat(coords)
+        .addTo(map);
+    });
+
+    // Uncertainty circle popup
+    map.on("click", "drift-uncertainty", (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const coords = (f.geometry as GeoJSON.Point).coordinates as [number, number];
+      
+      new maplibregl.Popup({ closeButton: true, maxWidth: '240px' })
+        .setHTML(`
+          <div style="font-family: var(--font-inter), system-ui, sans-serif;">
+            <div style="font-size:10px;color:#22d3ee;margin-bottom:4px;">UNCERTAINTY REGION</div>
+            <div style="font-size:10px;color:#93a4bd;">
+              The estimated source region accounts for drift model uncertainty. The actual release point may be anywhere within this area.
+            </div>
+          </div>
+        `)
+        .setLngLat(coords)
+        .addTo(map);
+    });
+
+    // Cursor for source/uncertainty points
+    map.on("mouseenter", "drift-source-point", () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", "drift-source-point", () => { map.getCanvas().style.cursor = ""; });
+    map.on("mouseenter", "drift-uncertainty", () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", "drift-uncertainty", () => { map.getCanvas().style.cursor = ""; });
 
     // AIS vessel track lines
     map.addLayer({
@@ -431,48 +616,165 @@ export function MapView({ incidents = [], scenes = [], drift = null, attribution
       const inc = dataRef.current.incidents.find((i) => i.id === id);
       if (inc) selectIncident(inc);
     });
-    map.on("mouseenter", "detection-fill", () => {
+
+    // Centroid click also selects
+    map.on("click", "centroid-dot", (e) => {
+      const f = e.features?.[0];
+      const id = f?.properties?.id as string | undefined;
+      if (!id) return;
+      const inc = dataRef.current.incidents.find((i) => i.id === id);
+      if (inc) selectIncident(inc);
+    });
+
+    // Hover cursors for detection layers
+    map.on("mouseenter", "detection-fill", () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", "detection-fill", () => { map.getCanvas().style.cursor = ""; });
+    map.on("mouseenter", "centroid-dot", () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", "centroid-dot", () => { map.getCanvas().style.cursor = ""; });
+
+    // Candidate vessel click popup
+    map.on("click", "candidate-vessel-points", (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const props = f.properties;
+      const coords = (f.geometry as GeoJSON.Point).coordinates as [number, number];
+      
+      const score = props.score ? Math.round(Number(props.score) * 100) : 0;
+      const isTop = props.rank === 1;
+      
+      new maplibregl.Popup({ closeButton: true, maxWidth: '280px', className: 'map-popup-vessel' })
+        .setHTML(`
+          <div style="font-family: var(--font-inter), system-ui, sans-serif;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:600;color:#e6edf5;">${props.name || `MMSI ${props.mmsi}`}</span>
+              ${isTop ? '<span style="font-size:9px;padding:1px 6px;border:1px solid rgba(56,189,248,0.4);border-radius:3px;background:rgba(56,189,248,0.1);color:#38bdf8;font-family:monospace;">POTENTIAL SOURCE</span>' : ''}
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;font-size:10px;">
+              <div style="color:#5c718f;">VESSEL</div><div style="color:#e6edf5;font-family:monospace;">${props.name || '—'}</div>
+              <div style="color:#5c718f;">MMSI</div><div style="color:#e6edf5;font-family:monospace;">${props.mmsi}</div>
+              <div style="color:#5c718f;">TYPE</div><div style="color:#e6edf5;font-family:monospace;">${props.type || '—'}</div>
+              <div style="color:#5c718f;">RANK</div><div style="color:#e6edf5;font-family:monospace;">#${props.rank || '—'}</div>
+            </div>
+            <div style="margin-top:6px;padding-top:6px;border-top:1px solid #1b2a44;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:9px;color:#5c718f;">ATTRIBUTION SCORE</span>
+                <span style="font-size:11px;font-weight:bold;color:#38bdf8;font-family:monospace;">${score}%</span>
+              </div>
+              <div style="margin-top:3px;height:3px;border-radius:2px;background:#0d1626;overflow:hidden;">
+                <div style="height:100%;width:${score}%;background:#38bdf8;border-radius:2px;"></div>
+              </div>
+            </div>
+            <div style="margin-top:6px;font-size:9px;color:#5c718f;font-style:italic;">
+              Human review required — AIS proximity does not establish causation.
+            </div>
+          </div>
+        `)
+        .setLngLat(coords)
+        .addTo(map);
+    });
+
+    // Hover cursor for vessel points
+    map.on("mouseenter", "candidate-vessel-points", () => {
       map.getCanvas().style.cursor = "pointer";
+    });
+    map.on("mouseleave", "candidate-vessel-points", () => {
+      map.getCanvas().style.cursor = "";
+    });
+
+    // Detection hover popup
+    let detectionPopup: maplibregl.Popup | null = null;
+    map.on("mouseenter", "detection-fill", (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const props = f.properties;
+      const coords = (f.geometry as GeoJSON.Polygon).coordinates[0][0] as [number, number];
+      const confidence = props.confidence ? Math.round(Number(props.confidence) * 100) : 0;
+      
+      if (detectionPopup) detectionPopup.remove();
+      detectionPopup = new maplibregl.Popup({ closeButton: false, maxWidth: '220px', className: 'map-popup-detection' })
+        .setHTML(`
+          <div style="font-family: var(--font-inter), system-ui, sans-serif;">
+            <div style="font-size:10px;color:#f97316;margin-bottom:4px;font-weight:600;letter-spacing:0.1em;">MODEL DETECTION</div>
+            <div style="font-size:11px;font-weight:600;color:#e6edf5;">${props.id || '—'}</div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin-top:4px;font-size:10px;">
+              <span style="color:#5c718f;">Confidence</span><span style="color:#38bdf8;font-family:monospace;">${confidence}%</span>
+              <span style="color:#5c718f;">Level</span><span style="color:#e6edf5;font-family:monospace;">${props.level || '—'}</span>
+            </div>
+            <div style="margin-top:4px;font-size:9px;color:#5c718f;font-style:italic;">
+              Model-generated candidate — requires human review.
+            </div>
+          </div>
+        `)
+        .setLngLat(coords)
+        .addTo(map);
     });
     map.on("mouseleave", "detection-fill", () => {
       map.getCanvas().style.cursor = "";
+      if (detectionPopup) { detectionPopup.remove(); detectionPopup = null; }
     });
   }
 
   /* ---------- sync detection data ---------- */
   React.useEffect(() => {
     const map = mapRef.current;
-    if (!map || !ready) return;
-    const src = map.getSource("detections") as maplibregl.GeoJSONSource | undefined;
-    src?.setData({
-      type: "FeatureCollection",
-      features: incidents.map((inc) => ({
-        type: "Feature" as const,
-        id: undefined,
-        properties: {
-          id: inc.id,
-          level: inc.level,
-          confidence: inc.confidence,
-        },
-        geometry: inc.geometry,
-      })),
-    });
-  }, [incidents, ready]);
+    if (!map || !ready || !map.isStyleLoaded()) return;
+    try {
+      const src = map.getSource("detections") as maplibregl.GeoJSONSource | undefined;
+      src?.setData({
+        type: "FeatureCollection",
+        features: incidents.map((inc) => ({
+          type: "Feature" as const,
+          id: undefined,
+          properties: {
+            id: inc.id,
+            level: inc.level,
+            confidence: inc.confidence,
+          },
+          geometry: inc.geometry,
+        })),
+      });
+
+      // Update centroid markers
+      const centroidSrc = map.getSource("detection-centroids") as maplibregl.GeoJSONSource | undefined;
+      centroidSrc?.setData({
+        type: "FeatureCollection",
+        features: incidents.map((inc) => ({
+          type: "Feature" as const,
+          properties: {
+            id: inc.id,
+            level: inc.level,
+            confidence: inc.confidence,
+            selected: inc.id === selectedId,
+          },
+          geometry: {
+            type: "Point" as const,
+            coordinates: [inc.centroid.lon, inc.centroid.lat],
+          },
+        })),
+      });
+    } catch {
+      /* ignore style loading transition */
+    }
+  }, [incidents, ready, selectedId]);
 
   React.useEffect(() => {
     const map = mapRef.current;
-    if (!map || !ready) return;
-    const src = map.getSource("coverage") as maplibregl.GeoJSONSource | undefined;
-    src?.setData({
-      type: "FeatureCollection",
-      features: scenes.map(bboxPolygon),
-    });
+    if (!map || !ready || !map.isStyleLoaded()) return;
+    try {
+      const src = map.getSource("coverage") as maplibregl.GeoJSONSource | undefined;
+      src?.setData({
+        type: "FeatureCollection",
+        features: scenes.map(bboxPolygon),
+      });
+    } catch {
+      /* ignore style loading transition */
+    }
   }, [scenes, ready]);
 
   // Sync drift data
   React.useEffect(() => {
     const map = mapRef.current;
-    if (!map || !ready) return;
+    if (!map || !ready || !map.isStyleLoaded()) return;
 
     // Trajectory lines
     const trajSrc = map.getSource("drift-trajectories") as maplibregl.GeoJSONSource | undefined;
@@ -533,7 +835,7 @@ export function MapView({ incidents = [], scenes = [], drift = null, attribution
   // Sync AIS data to map
   React.useEffect(() => {
     const map = mapRef.current;
-    if (!map || !ready) return;
+    if (!map || !ready || !map.isStyleLoaded()) return;
 
     // AIS vessel points (all vessels from attribution)
     const aisSrc = map.getSource("ais-vessels") as maplibregl.GeoJSONSource | undefined;
@@ -621,40 +923,88 @@ export function MapView({ incidents = [], scenes = [], drift = null, attribution
   /* ---------- selection highlight + pulse ---------- */
   React.useEffect(() => {
     const map = mapRef.current;
-    if (!map || !ready) return;
+    if (!map || !ready || !map.isStyleLoaded()) return;
 
-    map.setFilter(
-      "detection-pulse",
-      ["==", ["get", "id"], selectedId ?? "__none__"] as never
-    );
-    map.setPaintProperty(
-      "detection-fill",
-      "fill-color",
-      detectionFillExpression(selectedId) as never
-    );
-    map.setPaintProperty("detection-fill", "fill-opacity", [
-      "case",
-      ["==", ["get", "id"], selectedId ?? "__none__"],
-      0.5,
-      0.26,
-    ] as never);
-    map.setPaintProperty("detection-outline", "line-width", [
-      "case",
-      ["==", ["get", "id"], selectedId ?? "__none__"],
-      3,
-      1.4,
-    ] as never);
-  }, [selectedId, ready]);
+    try {
+      map.setPaintProperty("detection-glow", "line-width", [
+        "case",
+        ["==", ["get", "id"], selectedId ?? "__none__"],
+        10,
+        5,
+      ] as never);
+      map.setPaintProperty("detection-fill", "fill-opacity", [
+        "case",
+        ["==", ["get", "id"], selectedId ?? "__none__"],
+        0.65,
+        0.35,
+      ] as never);
+      map.setPaintProperty("detection-outline", "line-width", [
+        "case",
+        ["==", ["get", "id"], selectedId ?? "__none__"],
+        3,
+        1.8,
+      ] as never);
 
+      // Update centroid selection state
+      const centroidSrc = map.getSource("detection-centroids") as maplibregl.GeoJSONSource | undefined;
+      if (centroidSrc) {
+        centroidSrc.setData({
+          type: "FeatureCollection",
+          features: incidents.map((inc) => ({
+            type: "Feature" as const,
+            properties: {
+              id: inc.id,
+              level: inc.level,
+              confidence: inc.confidence,
+              selected: inc.id === selectedId,
+            },
+            geometry: {
+              type: "Point" as const,
+              coordinates: [inc.centroid.lon, inc.centroid.lat],
+            },
+          })),
+        });
+      }
+
+      if (selectedId) {
+        const targetInc = incidents.find((i) => i.id === selectedId);
+        if (targetInc && targetInc.centroid) {
+          map.flyTo({
+            center: [targetInc.centroid.lon, targetInc.centroid.lat],
+            zoom: 11.2,
+            pitch: 25,
+            duration: 1800,
+            essential: true,
+          });
+        }
+      }
+    } catch {
+      /* ignore style loading transitions */
+    }
+  }, [selectedId, incidents, ready]);
+
+  // Pulse animation for selected detection
   React.useEffect(() => {
     const map = mapRef.current;
-    if (!map || !ready || !selectedId) return;
+    if (!map || !ready || !map.isStyleLoaded()) return;
     let raf = 0;
     const t0 = performance.now();
     const animate = (t: number) => {
-      const phase = ((t - t0) / 1400) % 1;
-      const opacity = 0.32 * (1 - phase);
-      map.setPaintProperty("detection-pulse", "fill-opacity", opacity);
+      if (!selectedId) {
+        try {
+          map.setPaintProperty("centroid-pulse-ring", "circle-stroke-opacity", 0);
+          map.setPaintProperty("centroid-pulse-ring", "circle-opacity", 0);
+        } catch { /* ignore */ }
+        return;
+      }
+      const phase = ((t - t0) / 2000) % 1;
+      const opacity = 0.6 * (1 - phase);
+      const radius = 8 + phase * 10;
+      try {
+        map.setPaintProperty("centroid-pulse-ring", "circle-radius", radius);
+        map.setPaintProperty("centroid-pulse-ring", "circle-stroke-opacity", opacity);
+        map.setPaintProperty("centroid-pulse-ring", "circle-opacity", opacity * 0.15);
+      } catch { /* ignore */ }
       raf = requestAnimationFrame(animate);
     };
     raf = requestAnimationFrame(animate);
@@ -665,34 +1015,63 @@ export function MapView({ incidents = [], scenes = [], drift = null, attribution
   React.useEffect(() => {
     if (!ready) return;
     const map = mapRef.current;
-    if (map) applyVisibility(map, activeLayers);
+    if (map && map.isStyleLoaded()) applyVisibility(map, activeLayers);
   }, [activeLayers, ready]);
 
   function applyVisibility(map: MapLibreMap, layers: Record<string, boolean>) {
+    if (!map || !map.isStyleLoaded()) return;
     const visibility = (on: boolean) => (on ? "visible" : "none");
-    map.setLayoutProperty("detection-pulse", "visibility", visibility(layers["detections"]));
-    map.setLayoutProperty("detection-fill", "visibility", visibility(layers["detections"]));
-    map.setLayoutProperty("detection-outline", "visibility", visibility(layers["detections"]));
-    map.setLayoutProperty("coverage-fill", "visibility", visibility(layers["scene-coverage"]));
-    map.setLayoutProperty("coverage-line", "visibility", visibility(layers["scene-coverage"]));
-    map.setLayoutProperty("drift-trajectory-lines", "visibility", visibility(layers["drift-trajectories"]));
-    map.setLayoutProperty("drift-uncertainty", "visibility", visibility(layers["source-probability"]));
-    map.setLayoutProperty("drift-source-point", "visibility", visibility(layers["source-probability"]));
-    map.setLayoutProperty("drift-slick-point", "visibility", visibility(layers["source-probability"]));
-    map.setLayoutProperty("ais-vessel-points", "visibility", visibility(layers["ais-vessels"]));
-    map.setLayoutProperty("ais-track-lines", "visibility", visibility(layers["ais-tracks"]));
-    map.setLayoutProperty("candidate-vessel-points", "visibility", visibility(layers["candidate-vessels"]));
-    map.setLayoutProperty("candidate-vessel-labels", "visibility", visibility(layers["candidate-vessels"]));
+    const safeSetLayout = (id: string, vis: boolean) => {
+      if (map.getLayer(id)) {
+        try {
+          map.setLayoutProperty(id, "visibility", visibility(vis));
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+    safeSetLayout("detection-glow", layers["detections"]);
+    safeSetLayout("detection-fill", layers["detections"]);
+    safeSetLayout("detection-outline", layers["detections"]);
+    safeSetLayout("centroid-pulse-ring", layers["detections"]);
+    safeSetLayout("centroid-dot", layers["detections"]);
+    safeSetLayout("centroid-label", layers["detections"]);
+    safeSetLayout("coverage-fill", layers["scene-coverage"]);
+    safeSetLayout("coverage-line", layers["scene-coverage"]);
+    safeSetLayout("drift-trajectory-lines", layers["drift-trajectories"]);
+    safeSetLayout("drift-uncertainty", layers["source-probability"]);
+    safeSetLayout("drift-source-point", layers["source-probability"]);
+    safeSetLayout("drift-slick-point", layers["source-probability"]);
+    safeSetLayout("ais-vessel-points", layers["ais-vessels"]);
+    safeSetLayout("ais-track-lines", layers["ais-tracks"]);
+    safeSetLayout("candidate-vessel-points", layers["candidate-vessels"]);
+    safeSetLayout("candidate-vessel-labels", layers["candidate-vessels"]);
   }
 
   /* ---------- external fly-to requests ---------- */
   React.useEffect(() => {
     if (!flyTo || !ready) return;
-    mapRef.current?.flyTo({
+
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Determine appropriate zoom - use deeper zoom for investigation
+    const targetZoom = flyTo.zoom ?? 8;
+
+    // Smooth cinematic fly-to with appropriate duration based on distance
+    const currentCenter = map.getCenter();
+    const dx = flyTo.lon - currentCenter.lng;
+    const dy = flyTo.lat - currentCenter.lat;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Longer duration for longer distances (globe → incident)
+    const duration = Math.min(3000, Math.max(1200, distance * 40));
+
+    map.flyTo({
       center: [flyTo.lon, flyTo.lat],
-      zoom: flyTo.zoom ?? DEFAULT_ZOOM + 3.5,
-      speed: 1.1,
-      curve: 1.6,
+      zoom: targetZoom,
+      duration,
+      curve: 1.8,
       essential: true,
     });
   }, [flyTo, ready]);
@@ -701,8 +1080,18 @@ export function MapView({ incidents = [], scenes = [], drift = null, attribution
   const zoomBy = (delta: number) =>
     mapRef.current?.easeTo({ zoom: (mapRef.current?.getZoom() ?? 4) + delta, duration: 250 });
 
-  const resetView = () =>
-    mapRef.current?.fitBounds(INDIA_BOUNDS, { padding: 48, duration: 700 });
+  const resetView = () => {
+    if (projectionMode === "globe") {
+      // Reset to global view
+      mapRef.current?.flyTo({
+        center: [78, 15],
+        zoom: 1.5,
+        duration: 700,
+      });
+    } else {
+      mapRef.current?.fitBounds(INDIA_BOUNDS, { padding: 48, duration: 700 });
+    }
+  };
 
   const locateCamera = () => {
     const sel = dataRef.current.incidents.find((i) => i.id === selectedId);

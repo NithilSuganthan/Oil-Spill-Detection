@@ -72,6 +72,12 @@ export type IndianRegion = Exclude<(typeof INDIAN_REGIONS)[number], "All India R
 
 export type TimeRange = "6h" | "24h" | "7d";
 
+// ── Map Configuration Types ────────────────────────────────────────────
+
+export type MapStyle = "dark" | "satellite" | "ocean" | "terrain";
+
+export type ProjectionMode = "globe" | "mercator";
+
 export interface IncidentFilters {
   search: string;
   levels: ConfidenceLevel[];
@@ -251,8 +257,34 @@ export interface InvestigationResult {
   drift: DriftResult | null;
   attribution: AttributionResult | null;
   intelligence?: DetectionIntelligence | null;
+  criticality?: CriticalityScore | null;
   environment: "DEMO" | "MIXED" | "REAL";
   status: "completed" | "failed";
+}
+
+// ── Phase 1: Operational Criticality Score ─────────────────────────────
+
+export interface CriticalityFactor {
+  name: string;
+  label: string;
+  score: number;
+  maxScore: number;
+  weight: number;
+  normalizedWeight: number;
+  available: boolean;
+  source: string;
+  explanation: string;
+}
+
+export interface CriticalityScore {
+  score: number;
+  level: "LOW" | "MID" | "HIGH" | "CRITICAL";
+  action: string;
+  methodology: string;
+  factors: CriticalityFactor[];
+  availableFactorCount: number;
+  totalFactorCount: number;
+  normalizationNote: string;
 }
 
 // ── Phase 8: Detection Intelligence ────────────────────────────────────
@@ -389,3 +421,107 @@ export interface StoredReport {
   promptVersion: string;
   report: InvestigationReport;
 }
+
+// ── Phase 2: Environmental Grid ─────────────────────────────────────
+
+export interface EnvironmentalMetadata {
+  provider: string;
+  status: "REAL" | "DEMO" | "DATA_UNAVAILABLE" | "CREDENTIALS_REQUIRED";
+  dataTime: string | null;
+  dataAgeMinutes: number | null;
+  spatialResolutionDeg: number | null;
+  temporalResolutionHours: number | null;
+  bbox: number[];
+  gridSize: number[];
+}
+
+export interface WindVector {
+  u: number;
+  v: number;
+  speedMs: number;
+  speedKts: number;
+  directionDeg: number;
+}
+
+export interface CurrentVector {
+  u: number;
+  v: number;
+  speedMs: number;
+  directionDeg: number;
+}
+
+export interface EnvironmentalGrid {
+  wind: (number | null)[][];
+  current: (number | null)[][];
+  windU: (number | null)[][];
+  windV: (number | null)[][];
+  currentU: (number | null)[][];
+  currentV: (number | null)[][];
+  lats: number[];
+  lons: number[];
+  metadata: EnvironmentalMetadata;
+  windPoint: WindVector | null;
+  currentPoint: CurrentVector | null;
+}
+
+// ── Operational Alerts ───────────────────────────────────────────────
+
+export type AlertStatus = "NEW" | "REVIEWING" | "RESOLVED";
+export type AlertSeverity = "CRITICAL" | "HIGH" | "MODERATE" | "LOW";
+
+export interface OperationalAlert {
+  alertId: string;
+  incidentId: string;
+  severity: AlertSeverity;
+  criticalityScore: number;
+  status: AlertStatus;
+  title: string;
+  summary: string;
+  createdAt: string;
+  detectionTime: string;
+  latitude: number;
+  longitude: number;
+  areaKm2: number;
+  modelConfidence: number;
+  locationDescription: string;
+  action: string;
+  factors: CriticalityFactor[];
+  geometry?: GeoJSON.Geometry | null;
+  evidence?: {
+    environmental?: {
+      windSpeedKts?: number | null;
+      region?: string | null;
+    };
+    drift?: {
+      uncertaintyKm?: number | null;
+      uncertaintyHours?: number | null;
+      sourceLat?: number | null;
+      sourceLon?: number | null;
+    } | null;
+    ais?: {
+      candidateCount?: number;
+      topCandidate?: {
+        vesselName?: string | null;
+        mmsi?: string | null;
+        attributionScore?: number | null;
+      } | null;
+    } | null;
+  } | null;
+}
+
+export interface AlertSummaryStats {
+  critical: number;
+  high: number;
+  new: number;
+  total: number;
+}
+
+export interface AlertAnalysisResult {
+  created: boolean;
+  reused: boolean;
+  alert: OperationalAlert | null;
+  criticalityScore: number;
+  criticalityLevel: string;
+  reason: string;
+}
+

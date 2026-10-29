@@ -16,7 +16,7 @@ import logging
 import urllib.parse
 import urllib.request
 import urllib.error
-from datetime import timezone
+from datetime import datetime, timezone
 
 from app.domain.ais import AisObservation, AisSearchWindow
 from app.services.ais_provider import AISProvider

@@ -131,13 +131,23 @@ export function SatelliteViewerModal() {
             <LoadingBlock label="Loading scene…" />
           ) : (
             <div className="grid h-full min-h-0 grid-cols-1 gap-3 lg:grid-cols-[1fr_280px]">
-              <div className="relative min-h-[320px]">
+              <div className="relative min-h-[320px] scan-overlay">
                 <SarCanvas
                   key={viewerTab}
                   incident={incident}
                   mode={viewerTab as ViewerMode}
                   maskOpacity={maskOpacity}
                 />
+                {/* Scanning status indicator */}
+                <div className="absolute left-2 top-2 z-10 flex items-center gap-1.5 rounded border border-signal-cyan/30 bg-base-950/80 px-2 py-1 backdrop-blur">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-signal-cyan opacity-75 animate-pulse-dot" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-signal-cyan" />
+                  </span>
+                  <span className="font-mono text-[8px] uppercase tracking-widest text-signal-cyan">
+                    SCENE ACQUIRED
+                  </span>
+                </div>
               </div>
 
               {/* side metadata */}
